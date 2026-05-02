@@ -36,9 +36,10 @@ type RedisConfig struct {
 }
 
 type QdrantConfig struct {
-	Url          string
-	Collection   string
-	ApiKey       string
+	Url           string
+	Collection    string
+	ApiKey        string
+	DocCollection string
 }
 
 type LMConfig struct {
@@ -104,9 +105,10 @@ var (
 	}
 
 	Qdrant = QdrantConfig{
-		Url:        getEnv("QDRANT_URL","http://127.0.0.1:6333"),
-		Collection: getEnv("QDRANT_COLLECTION",""),
-		ApiKey:     getEnv("QDRANT_API_KEY",""),
+		Url:           getEnv("QDRANT_URL", "http://127.0.0.1:6333"),
+		Collection:    getEnv("QDRANT_COLLECTION", ""),
+		ApiKey:        getEnv("QDRANT_API_KEY", ""),
+		DocCollection: getEnv("QDRANT_DOC_COLLECTION", "documents"),
 	}
 
 	LM = LMConfig{

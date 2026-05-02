@@ -13,6 +13,10 @@ import { createApp, defineComponent, nextTick, ref, watch, markRaw } from "vue";
 import { defineStore } from "pinia";
 import mapboxGl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+// (removed) @mapbox/mapbox-gl-directions — replaced by a hand-rolled
+// RoutePanel.vue + InstructionsPanel.vue that read directly from
+// mapStore.aiRoute. The plugin's UX (always-on top-left card, no waypoint
+// controls, opaque internals, profile switcher tied to redux) didn't fit.
 import Hls from "hls.js";
 import { ArcLayer } from "@deck.gl/layers";
 import { MapboxOverlay } from "@deck.gl/mapbox";
@@ -82,6 +86,27 @@ export const useMapStore = defineStore("map", {
 		viewPoints: [],
 		marker: null,
 		tempMarkerCoordinates: null,
+		// AI / chat-driven route state — single source of truth for the
+		// hand-rolled RoutePanel.vue and InstructionsPanel.vue. Replaces the
+		// Mapbox Directions plugin.
+		aiRoute: {
+			origin: null,           // { lng, lat, label } | null
+			destination: null,      // { lng, lat, label } | null
+			waypoints: [],          // [{ lng, lat, label }]
+			mode: "driving",        // walking | driving | cycling
+			legs: [],               // [{ distance_km, duration_min, summary, coordinates: [[lng,lat],...], steps: [{instruction, distance_m, name, type}] }]
+			totalDistanceKm: "0.00",
+			totalDurationMin: 0,
+		},
+		// Whether the route is currently being recomputed (UI shows a spinner).
+		aiRouteLoading: false,
+		// True while the user is in "click on map to add waypoint" mode.
+		// addPopup checks this so the click doesn't also open a popup.
+		pickingWaypoint: false,
+		// Combined route panel: hidden until the first AI route renders;
+		// collapsed = thin handle on the left edge.
+		routeUiVisible: false,
+		routePanelCollapsed: false,
 		// Store the user's current location,
 		userLocation: { latitude: null, longitude: null },
 		// 3D Mrt Map 相關參數
@@ -119,6 +144,7 @@ export const useMapStore = defineStore("map", {
 			});
 			this.map.addControl(geoLocate);
 			this.map.addControl(new mapboxGl.NavigationControl());
+
 			this.map.doubleClickZoom.disable();
 			let isFirstZoom = true;
 			this.map
@@ -1898,6 +1924,9 @@ export const useMapStore = defineStore("map", {
 		/* Popup Related Functions */
 		// 1. Adds a popup when the user clicks on a item. The event will be passed in.
 		addPopup(event) {
+			// Suppress popups while the user is placing a route waypoint —
+			// the click is "consumed" by the waypoint picker.
+			if (this.pickingWaypoint) return;
 			const formatValue = (value, key) => {
 				if (key === "occupied_rate") {
 					return value === -99 ? "-" : value;
@@ -2295,6 +2324,396 @@ export const useMapStore = defineStore("map", {
 				center: location_array,
 				duration: 1000,
 			});
+		},
+		// AI assistant overlay: POI markers, multi-leg route line, and endpoint
+		// markers (A / 停靠點 / B) on the existing map.
+		// Idempotent — call setAiPois / setRoute / renderRoute repeatedly;
+		// clearAi() to wipe everything.
+		_ensureAiSources() {
+			if (!this.map || !this.map.isStyleLoaded()) return false;
+			try {
+				if (!this.map.getSource("ai-pois-src")) {
+					this.map.addSource("ai-pois-src", {
+						type: "geojson",
+						data: { type: "FeatureCollection", features: [] },
+					});
+					this.map.addLayer({
+						id: "ai-pois-layer",
+						type: "circle",
+						source: "ai-pois-src",
+						paint: {
+							"circle-radius": 8,
+							"circle-color": ["get", "color"],
+							"circle-stroke-color": "#fff",
+							"circle-stroke-width": 2,
+						},
+					});
+					this.map.addLayer({
+						id: "ai-pois-label",
+						type: "symbol",
+						source: "ai-pois-src",
+						layout: {
+							"text-field": ["get", "label"],
+							"text-size": 12,
+							"text-offset": [0, 1.4],
+							"text-anchor": "top",
+							"text-allow-overlap": false,
+						},
+						paint: {
+							"text-color": "#fff",
+							"text-halo-color": "#000",
+							"text-halo-width": 1.5,
+						},
+					});
+					// Click handler -> popup
+					this.map.on("click", "ai-pois-layer", (e) => {
+						const f = e.features[0];
+						const p = f.properties;
+						const distance = p.distance_m
+							? `<br/><span style="color:#bbb">距離 ${Math.round(p.distance_m)} m</span>`
+							: "";
+						const sub = p.subtitle
+							? `<br/><span style="color:#bbb">${p.subtitle}</span>`
+							: "";
+						new mapboxGl.Popup({ offset: 12 })
+							.setLngLat(f.geometry.coordinates)
+							.setHTML(
+								`<div style="font-size:13px"><b>${p.label}</b>${distance}${sub}</div>`
+							)
+							.addTo(this.map);
+					});
+					this.map.on("mouseenter", "ai-pois-layer", () => {
+						this.map.getCanvas().style.cursor = "pointer";
+					});
+					this.map.on("mouseleave", "ai-pois-layer", () => {
+						this.map.getCanvas().style.cursor = "";
+					});
+				}
+				if (!this.map.getSource("ai-route-src")) {
+					// FeatureCollection so each leg can carry its own colour.
+					this.map.addSource("ai-route-src", {
+						type: "geojson",
+						data: { type: "FeatureCollection", features: [] },
+					});
+					// White casing under all legs to make the route pop on any base map.
+					this.map.addLayer({
+						id: "ai-route-casing",
+						type: "line",
+						source: "ai-route-src",
+						layout: { "line-join": "round", "line-cap": "round" },
+						paint: { "line-color": "#ffffff", "line-width": 9, "line-opacity": 0.9 },
+					});
+					this.map.addLayer({
+						id: "ai-route-layer",
+						type: "line",
+						source: "ai-route-src",
+						layout: { "line-join": "round", "line-cap": "round" },
+						paint: {
+							// Data-driven: each leg feature carries its own "color" prop.
+							"line-color": ["coalesce", ["get", "color"], "#1e88e5"],
+							"line-width": 6,
+							"line-opacity": 1,
+						},
+					});
+				}
+				if (!this.map.getSource("ai-route-points-src")) {
+					// Markers for origin / destination / waypoints.
+					this.map.addSource("ai-route-points-src", {
+						type: "geojson",
+						data: { type: "FeatureCollection", features: [] },
+					});
+					this.map.addLayer({
+						id: "ai-route-points-casing",
+						type: "circle",
+						source: "ai-route-points-src",
+						paint: {
+							"circle-radius": 11,
+							"circle-color": "#ffffff",
+						},
+					});
+					this.map.addLayer({
+						id: "ai-route-points-layer",
+						type: "circle",
+						source: "ai-route-points-src",
+						paint: {
+							"circle-radius": 8,
+							"circle-color": ["coalesce", ["get", "color"], "#1e88e5"],
+						},
+					});
+					this.map.addLayer({
+						id: "ai-route-points-label",
+						type: "symbol",
+						source: "ai-route-points-src",
+						layout: {
+							"text-field": ["get", "label"],
+							"text-size": 12,
+							"text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+							"text-offset": [0, 0],
+							"text-anchor": "center",
+							"text-allow-overlap": true,
+						},
+						paint: {
+							"text-color": "#ffffff",
+						},
+					});
+				}
+				return true;
+			} catch (e) {
+				console.warn("ensureAiSources failed", e);
+				return false;
+			}
+		},
+		setAiPois(pois) {
+			// Map not yet created (chat answered before user opened mapview) — retry later.
+			if (!this.map) {
+				setTimeout(() => this.setAiPois(pois), 500);
+				return;
+			}
+			if (!this._ensureAiSources()) {
+				// Style not loaded yet. `idle` is more reliable than `style.load`,
+				// which never fires if the style is already loaded by the time we
+				// attach the listener.
+				this.map.once("idle", () => this.setAiPois(pois));
+				return;
+			}
+			const features = (pois || [])
+				.filter((p) => p.lng != null && p.lat != null)
+				.map((p) => ({
+					type: "Feature",
+					geometry: { type: "Point", coordinates: [p.lng, p.lat] },
+					properties: {
+						label: p.label || "",
+						color: p.color || "#ff7043",
+						subtitle: p.subtitle || "",
+						distance_m: p.distance_m ?? null,
+					},
+				}));
+			const src = this.map.getSource("ai-pois-src");
+			if (!src) return;
+			src.setData({ type: "FeatureCollection", features });
+			if (features.length) {
+				const bounds = features.reduce(
+					(b, f) => b.extend(f.geometry.coordinates),
+					new mapboxGl.LngLatBounds(
+						features[0].geometry.coordinates,
+						features[0].geometry.coordinates
+					)
+				);
+				this.map.fitBounds(bounds, { padding: 80, maxZoom: 16, duration: 800 });
+			}
+		},
+		// Per-leg colours; cycled by leg index. Each leg = segment between two
+		// consecutive coords (origin → wp1 → wp2 → ... → destination).
+		_routeLegColors() {
+			return ["#1e88e5", "#43a047", "#fb8c00", "#8e24aa", "#e53935", "#3949ab", "#00897b"];
+		},
+		// Render the current aiRoute (legs + endpoint markers) onto the map.
+		// Pure function of state — call after any mutation.
+		renderRoute() {
+			if (!this.map) {
+				setTimeout(() => this.renderRoute(), 500);
+				return;
+			}
+			if (!this.map.isStyleLoaded()) {
+				this.map.once("idle", () => this.renderRoute());
+				return;
+			}
+			if (!this._ensureAiSources()) return;
+
+			const colors = this._routeLegColors();
+			const legs = this.aiRoute.legs || [];
+
+			const lineFeatures = legs
+				.map((leg, i) => ({
+					type: "Feature",
+					geometry: {
+						type: "LineString",
+						coordinates: leg.coordinates || [],
+					},
+					properties: {
+						legIndex: i,
+						color: colors[i % colors.length],
+					},
+				}))
+				.filter((f) => f.geometry.coordinates.length > 1);
+
+			const lineSrc = this.map.getSource("ai-route-src");
+			if (lineSrc) {
+				lineSrc.setData({ type: "FeatureCollection", features: lineFeatures });
+			}
+
+			// Endpoint markers: A, 1, 2, ..., B
+			const points = [];
+			if (this.aiRoute.origin) {
+				points.push({
+					lng: this.aiRoute.origin.lng,
+					lat: this.aiRoute.origin.lat,
+					label: "A",
+					color: "#4ea1ff",
+				});
+			}
+			(this.aiRoute.waypoints || []).forEach((w, i) => {
+				points.push({
+					lng: w.lng,
+					lat: w.lat,
+					label: String(i + 1),
+					color: "#9b6ad6",
+				});
+			});
+			if (this.aiRoute.destination) {
+				points.push({
+					lng: this.aiRoute.destination.lng,
+					lat: this.aiRoute.destination.lat,
+					label: "B",
+					color: "#ff7043",
+				});
+			}
+			const pointSrc = this.map.getSource("ai-route-points-src");
+			if (pointSrc) {
+				pointSrc.setData({
+					type: "FeatureCollection",
+					features: points
+						.filter((p) => p.lng != null && p.lat != null)
+						.map((p) => ({
+							type: "Feature",
+							geometry: { type: "Point", coordinates: [p.lng, p.lat] },
+							properties: { label: p.label, color: p.color },
+						})),
+				});
+			}
+
+			// Fit bounds to the full route (line coords + endpoints).
+			const allCoords = lineFeatures
+				.flatMap((f) => f.geometry.coordinates)
+				.concat(points.map((p) => [p.lng, p.lat]));
+			if (allCoords.length) {
+				const bounds = allCoords.reduce(
+					(b, c) => b.extend(c),
+					new mapboxGl.LngLatBounds(allCoords[0], allCoords[0]),
+				);
+				this.map.fitBounds(bounds, { padding: 120, maxZoom: 15, duration: 1000 });
+			}
+		},
+		// Called by aiChatStore once compute_route returns. Replaces all route state.
+		// Schema: { origin: {lng,lat,label}, destination: {lng,lat,label},
+		//          waypoints: [{lng,lat,label}], mode, legs, totalDistanceKm, totalDurationMin }
+		setRoute(payload) {
+			if (!payload) return;
+			this.routeUiVisible = true;
+			this.aiRoute.origin = payload.origin || null;
+			this.aiRoute.destination = payload.destination || null;
+			this.aiRoute.waypoints = Array.isArray(payload.waypoints)
+				? payload.waypoints.slice()
+				: [];
+			this.aiRoute.mode = payload.mode || "driving";
+			this.aiRoute.legs = Array.isArray(payload.legs) ? payload.legs : [];
+			this.aiRoute.totalDistanceKm = payload.totalDistanceKm ?? "0.00";
+			this.aiRoute.totalDurationMin = payload.totalDurationMin ?? 0;
+			this.renderRoute();
+		},
+		// Re-fetch the route from Mapbox Directions API using current aiRoute
+		// (origin + waypoints + destination + mode). Used when the user edits
+		// the route manually via RoutePanel — not needed for AI-driven turns
+		// (the AI already computes via the BE compute_route tool).
+		async recomputeRoute() {
+			const r = this.aiRoute;
+			if (!r.origin || !r.destination) return;
+			const token = import.meta.env.VITE_MAPBOXTOKEN;
+			if (!token) {
+				console.warn("recomputeRoute: VITE_MAPBOXTOKEN missing");
+				return;
+			}
+			const points = [
+				`${r.origin.lng},${r.origin.lat}`,
+				...r.waypoints.map((w) => `${w.lng},${w.lat}`),
+				`${r.destination.lng},${r.destination.lat}`,
+			].join(";");
+			const profile =
+				{ walking: "walking", driving: "driving", cycling: "cycling" }[r.mode] ||
+				"driving";
+			const url =
+				`https://api.mapbox.com/directions/v5/mapbox/${profile}/${points}` +
+				`?geometries=geojson&overview=full&steps=true&language=zh-TW&access_token=${token}`;
+
+			this.aiRouteLoading = true;
+			try {
+				const res = await fetch(url);
+				const data = await res.json();
+				if (!data.routes || !data.routes.length) {
+					console.warn("recomputeRoute: no routes returned");
+					return;
+				}
+				const route = data.routes[0];
+				r.legs = (route.legs || []).map((leg) => ({
+					distance_km: (leg.distance / 1000).toFixed(2),
+					distance_m: Math.round(leg.distance),
+					duration_min: Math.round(leg.duration / 60),
+					summary: leg.summary || "",
+					coordinates: (leg.steps || []).flatMap(
+						(s) => s.geometry?.coordinates || [],
+					),
+					steps: (leg.steps || []).map((s) => ({
+						instruction: s.maneuver?.instruction || "",
+						distance_m: Math.round(s.distance),
+						name: s.name || "",
+						type: s.maneuver?.type || "",
+					})),
+				}));
+				r.totalDistanceKm = (route.distance / 1000).toFixed(2);
+				r.totalDurationMin = Math.round(route.duration / 60);
+				this.renderRoute();
+			} catch (e) {
+				console.warn("recomputeRoute failed", e);
+			} finally {
+				this.aiRouteLoading = false;
+			}
+		},
+		// User clicks "+ 新增停靠點" then on the map. Adds a waypoint at the end
+		// of the list and refetches the route.
+		addRouteWaypoint(coords) {
+			if (!Array.isArray(coords) || coords.length !== 2) return;
+			const i = this.aiRoute.waypoints.length;
+			this.aiRoute.waypoints.push({
+				lng: coords[0],
+				lat: coords[1],
+				label: `停靠點 ${i + 1}`,
+			});
+			this.recomputeRoute();
+		},
+		removeRouteWaypoint(index) {
+			if (index < 0 || index >= this.aiRoute.waypoints.length) return;
+			this.aiRoute.waypoints.splice(index, 1);
+			// Renumber default labels so they stay sequential.
+			this.aiRoute.waypoints.forEach((w, i) => {
+				if (/^停靠點 \d+$/.test(w.label || "")) w.label = `停靠點 ${i + 1}`;
+			});
+			this.recomputeRoute();
+		},
+		setRouteMode(mode) {
+			if (!["walking", "driving", "cycling"].includes(mode)) return;
+			if (this.aiRoute.mode === mode) return;
+			this.aiRoute.mode = mode;
+			this.recomputeRoute();
+		},
+		clearRoute() {
+			this.aiRoute.origin = null;
+			this.aiRoute.destination = null;
+			this.aiRoute.waypoints = [];
+			this.aiRoute.legs = [];
+			this.aiRoute.totalDistanceKm = "0.00";
+			this.aiRoute.totalDurationMin = 0;
+			if (this.map) {
+				const route = this.map.getSource("ai-route-src");
+				if (route) route.setData({ type: "FeatureCollection", features: [] });
+				const points = this.map.getSource("ai-route-points-src");
+				if (points) points.setData({ type: "FeatureCollection", features: [] });
+			}
+		},
+		clearAi() {
+			if (!this.map) return;
+			const pois = this.map.getSource("ai-pois-src");
+			if (pois) pois.setData({ type: "FeatureCollection", features: [] });
+			this.clearRoute();
 		},
 		// 3. Force map to resize after sidebar collapses
 		resizeMap() {

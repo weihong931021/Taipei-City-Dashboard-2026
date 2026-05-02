@@ -38,6 +38,11 @@ type QdrantQueryResponse struct {
 }
 
 func queryQdrant(queryVector []float32, limit int, scoreThreshold float64) (QdrantQueryResponse, error) {
+	return QueryQdrantCollection(global.Qdrant.Collection, queryVector, limit, scoreThreshold)
+}
+
+// QueryQdrantCollection runs a top-K similarity search against a specific Qdrant collection.
+func QueryQdrantCollection(collection string, queryVector []float32, limit int, scoreThreshold float64) (QdrantQueryResponse, error) {
 	var result QdrantQueryResponse
 
 	QdrantConfig := global.Qdrant
@@ -54,7 +59,7 @@ func queryQdrant(queryVector []float32, limit int, scoreThreshold float64) (Qdra
 		return result, fmt.Errorf("marshal request body error: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/collections/%s/points/query", QdrantConfig.Url, QdrantConfig.Collection)
+	url := fmt.Sprintf("%s/collections/%s/points/query", QdrantConfig.Url, collection)
 
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(bodyBytes))
 	if err != nil {

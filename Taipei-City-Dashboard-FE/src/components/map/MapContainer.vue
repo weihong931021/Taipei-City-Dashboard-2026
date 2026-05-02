@@ -13,6 +13,7 @@ import AddViewPoint from "../dialogs/AddViewPoint.vue";
 import MobileLayers from "../dialogs/MobileLayers.vue";
 import IncidentReport from "../dialogs/IncidentReport.vue";
 import FindClosestPoint from "../dialogs/FindClosestPoint.vue";
+import RoutePanel from "./RoutePanel.vue";
 import { savedLocations } from "../../assets/configs/mapbox/savedLocations.js";
 
 const authStore = useAuthStore();
@@ -23,6 +24,8 @@ const route = useRoute();
 
 const districtLayer = ref(false);
 const villageLayer = ref(false);
+// Waypoint picking is owned by RoutePanel; MapContainer only provides the
+// flag in mapStore.pickingWaypoint that addPopup() reads to suppress popups.
 
 const canUseFindClosestPoint = computed(() => {
 	let pointLayerCount = 0;
@@ -87,6 +90,11 @@ onMounted(() => {
     <div class="mapcontainer-map">
       <!-- #mapboxBox needs to be empty to ensure Mapbox performance -->
       <div id="mapboxBox" />
+
+      <!-- Combined 路徑 + 行程 panel (replaces @mapbox/mapbox-gl-directions).
+           Self-gates on mapStore.routeUiVisible. -->
+      <RoutePanel />
+
       <div class="mapcontainer-layers">
         <button
           :style="{
@@ -367,6 +375,8 @@ onMounted(() => {
 	height: 100%;
 	border-radius: 5px;
 }
+
+/* RoutePanel + InstructionsPanel are scoped components that own their styles. */
 
 @keyframes colorfade {
 	0% {

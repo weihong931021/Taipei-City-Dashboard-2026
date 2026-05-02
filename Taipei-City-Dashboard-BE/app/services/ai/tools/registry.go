@@ -2,9 +2,11 @@ package tools
 
 import (
 	"TaipeiCityDashboardBE/app/models"
+	"TaipeiCityDashboardBE/global"
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -17,6 +19,11 @@ func init() {
 	// Register demo tools
 	Register("get_current_time", GetCurrentTime)
 	Register("get_population_summary", GetPopulationSummary)
+	Register("search_documents", SearchDocuments)
+	Register("resolve_location", ResolveLocation)
+	Register("search_nearby_pois", SearchNearbyPOIs)
+	Register("compute_route", ComputeRoute)
+	Register("compute_carbon_emission", ComputeCarbonEmission)
 }
 
 // Register adds a tool to the registry
@@ -95,4 +102,66 @@ func GetCurrentTime(ctx context.Context, args string) (string, error) {
 // Helper to parse JSON arguments if needed in future tools
 func parseArgs(args string, v interface{}) error {
 	return json.Unmarshal([]byte(args), v)
+}
+
+// SearchDocsArgs defines the arguments for the search_documents tool
+type SearchDocsArgs struct {
+	Query    string  `json:"query"`
+	TopK     int     `json:"top_k"`
+	MinScore float64 `json:"min_score"`
+}
+
+// SearchDocuments performs semantic search over the markdown knowledge base in Qdrant.
+// Returns top-K matching chunks formatted for LLM consumption (with source citations).
+func SearchDocuments(ctx context.Context, args string) (string, error) {
+	var p SearchDocsArgs
+	if err := parseArgs(args, &p); err != nil {
+		return "", fmt.Errorf("invalid arguments: %v", err)
+	}
+	if p.Query == "" {
+		return "", fmt.Errorf("query is required")
+	}
+	if p.TopK <= 0 || p.TopK > 10 {
+		p.TopK = 5
+	}
+	if p.MinScore <= 0 {
+		p.MinScore = 0.70
+	}
+
+	vec, err := models.GenVector(p.Query)
+	if err != nil {
+		return "", fmt.Errorf("embed query failed: %v", err)
+	}
+
+	collection := global.Qdrant.DocCollection
+	if collection == "" {
+		collection = "documents"
+	}
+
+	resp, err := models.QueryQdrantCollection(collection, vec, p.TopK, p.MinScore)
+	if err != nil {
+		return "", fmt.Errorf("qdrant query failed: %v", err)
+	}
+
+	if len(resp.Result.Points) == 0 {
+		return "知識庫中找不到與「" + p.Query + "」相關的內容。請改用其他關鍵字，或回應使用者「目前知識庫沒有相關資料」。", nil
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("找到 %d 筆相關段落 (依相關度排序):\n\n", len(resp.Result.Points)))
+	for i, pt := range resp.Result.Points {
+		source, _ := pt.Payload["source_file"].(string)
+		heading, _ := pt.Payload["heading_path"].(string)
+		text, _ := pt.Payload["text"].(string)
+		// Cap chunk length to control token usage
+		if len(text) > 800 {
+			text = text[:800] + "..."
+		}
+		sb.WriteString(fmt.Sprintf(
+			"[%d] 來源: %s | 章節: %s | 相關度: %.3f\n%s\n\n",
+			i+1, source, heading, pt.Score, text,
+		))
+	}
+	sb.WriteString("\n指引: 引用上述內容回答使用者時,請在句尾標註來源 [來源: 檔名]。若內容不足以回答,請誠實說明。")
+	return sb.String(), nil
 }
