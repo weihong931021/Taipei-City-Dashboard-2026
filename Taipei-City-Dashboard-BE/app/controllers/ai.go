@@ -112,7 +112,7 @@ func ChatWithTWCC(c *gin.Context) {
 	}
 
 	// 5. Standard Non-Streaming Response
-	logEntry, err := ai.ChatWithTWCC(c.Request.Context(), req, options...)
+	logEntry, toolInvocations, err := ai.ChatWithTWCCDetailed(c.Request.Context(), req, options...)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status": "error",
@@ -132,10 +132,11 @@ func ChatWithTWCC(c *gin.Context) {
 				"output_tokens": logEntry.OutputTokens,
 				"total_tokens":  logEntry.TotalTokens,
 			},
-			"tool_used":   logEntry.ToolUsed,
-			"latency_ms":  logEntry.LatencyMS,
-			"model":       logEntry.Model,
-			"provider":    logEntry.Provider,
+			"tool_used":         logEntry.ToolUsed,
+			"tool_invocations":  toolInvocations,
+			"latency_ms":        logEntry.LatencyMS,
+			"model":             logEntry.Model,
+			"provider":          logEntry.Provider,
 		},
 	})
 }

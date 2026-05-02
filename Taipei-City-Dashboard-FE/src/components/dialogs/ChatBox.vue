@@ -1,75 +1,45 @@
 <script setup>
-import { ref, watch, nextTick } from "vue";
+import { ref, watch, nextTick, computed } from "vue";
 import { storeToRefs } from "pinia";
 import SendIcon from "../icons/SendIcon.vue";
 import BotLogo from "../icons/BotLogo.vue";
 import UserLogo from "../icons/UserLogo.vue";
 
-import { useChatStore } from "../../store/chatStore";
-import { useContentStore } from "../../store/contentStore";
-import { useAuthStore } from "../../store/authStore";
-import http from "../../router/axios";
+import { useAiChatStore } from "../../store/aiChatStore";
 
-const chatStore = useChatStore();
-const contentStore = useContentStore();
-const authStore = useAuthStore();
-const { addChatData, addQueryData, saveChatLog } = chatStore;
-const { createDashboard } = contentStore;
-const { chatData } = storeToRefs(chatStore);
-const { editDashboard } = storeToRefs(contentStore);
-const { user } = storeToRefs(authStore);
+const aiChatStore = useAiChatStore();
+const { messages, loading } = storeToRefs(aiChatStore);
 
 const userMessage = ref("");
 const chatAreaRef = ref(null);
 const isStickyOpen = ref(false);
-const dashboardCreationLoading = ref(false);
 
-const qaBtnHandler = async (text, relations) => {
-	if (text === "建立儀表板") {
-		if (dashboardCreationLoading.value === true) return;
-		dashboardCreationLoading.value = true;
-		// 確認個人儀表板是否超過20個
-		const response = await http.get(`/dashboard/`);
-		if (response.data?.data?.personal?.length > 20) {
-			addChatData({
-				role: "bot",
-				content:
-					"您的個人儀表板已超出限制 20 個，請先移除既有儀表板後，重新執行本功能！",
-			});
-			dashboardCreationLoading.value = false;
-			return;
-		}
-		const components = Array.from(new Set(relations.map((r) => r.id))).map(
-			(id) => ({ id }),
-		);
+// Adapt aiChatStore.messages to the existing template shape (id, role, content, etc.)
+const chatData = computed(() =>
+	messages.value.map((m, i) => ({
+		id: i,
+		role: m.role, // 'user' | 'bot'
+		content: m.content,
+		quickReplies: m.quickReplies,
+		error: m.error,
+		isDefault: i === 0,
+	})),
+);
 
-		if (user.value.user_id) {
-			editDashboard.value = {
-				index: "",
-				name: "推薦儀表板",
-				icon: "star",
-				components: components,
-			};
-			await createDashboard();
-			saveChatLog("建立儀表板", "使用者成功建立儀表板!");
-		} else {
-			addChatData({
-				role: "bot",
-				content: "請先登入會員以使用此功能喔！",
-			});
-		}
-		dashboardCreationLoading.value = false;
-	}
-};
-
-const sendBtnHandler = (text) => {
-	if (!text.trim()) return;
-	addQueryData({
-		role: "user",
-		content: text,
-	});
+function sendBtnHandler(text) {
+	if (!text.trim() || loading.value) return;
+	aiChatStore.send(text);
 	userMessage.value = "";
-};
+}
+
+function quickReplyHandler(text) {
+	if (loading.value) return;
+	aiChatStore.send(text);
+}
+
+function resetHandler() {
+	aiChatStore.reset();
+}
 
 const toggleSticky = () => {
 	isStickyOpen.value = !isStickyOpen.value;
@@ -92,6 +62,13 @@ watch(
     <!-- 標題 -->
     <div class="header">
       <h3>臺北城市儀表板小幫手</h3>
+      <button
+        class="reset-btn"
+        title="重新開始對話"
+        @click="resetHandler"
+      >
+        重新開始
+      </button>
     </div>
 
     <!-- 聊天區 -->
@@ -114,8 +91,11 @@ watch(
           v-show="isStickyOpen"
           class="sticky-body"
         >
-          <span>小幫手會依據您輸入的內容，自動檢索本站臺的組件資料庫，並回傳相似度較高的組件清單，協助您快速找到符合需求的元件或資訊。<br><br>
-            目前小幫手僅提供組件比對與分析服務，不支援一般聊天功能。如造成不便，敬請見諒！</span>
+          <span>小幫手可協助您：<br>
+            • 查詢台北/新北永續政策、補助、循環經濟相關文件 (RAG)<br>
+            • 找附近的環保餐廳或電動車充電站 (請至 /mapview 看地圖渲染)<br>
+            • 規劃路線 (回傳路徑會在 /mapview 地圖上畫出)<br><br>
+            提示：路線/找店類問題小幫手會反問細節，請點選快速回覆按鈕。</span>
         </div>
       </div>
       <div
@@ -135,54 +115,23 @@ watch(
             <div
               v-if="chat.content"
               class="message--bubble"
+              :class="{ 'message--bubble--error': chat.error }"
             >
               <p>{{ chat.content }}</p>
             </div>
-            <!-- 表格區 -->
+            <!-- 快速回覆按鈕 (CoT 澄清流程) -->
             <div
-              v-if="chat.relations"
-              v-horizontal-wheel
-              class="relation-area"
-            >
-              <table class="relation-table">
-                <thead>
-                  <tr>
-                    <th>排名</th>
-                    <th>城市名</th>
-                    <th>組件名</th>
-                    <th>關聯性</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr
-                    v-for="(item, index) in chat.relations"
-                    :key="index"
-                  >
-                    <td>{{ index + 1 }}</td>
-                    <td>
-                      {{
-                        item.city === "taipei"
-                          ? "臺北"
-                          : "雙北"
-                      }}
-                    </td>
-                    <td>{{ item.name }}</td>
-                    <td>{{ item.score }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div
-              v-if="chat.button"
+              v-if="chat.quickReplies && chat.quickReplies.length"
               v-horizontal-wheel
               class="message--button scrollbar-x-hide"
             >
               <button
-                v-for="btn in chat.button"
-                :key="btn.id"
-                @click="qaBtnHandler(btn.text, chat.relations)"
+                v-for="(q, j) in chat.quickReplies"
+                :key="j"
+                :disabled="loading"
+                @click="quickReplyHandler(q)"
               >
-                {{ btn.text }}
+                {{ q }}
               </button>
             </div>
           </div>
@@ -207,15 +156,27 @@ watch(
       </div>
     </div>
 
+    <!-- 載入指示器 -->
+    <div
+      v-if="loading"
+      class="loading-bar"
+    >
+      <span>思考中…</span>
+    </div>
+
     <!-- 輸入區 -->
     <div class="input-area">
       <input
         v-model="userMessage"
         type="text"
+        :disabled="loading"
         placeholder="輸入訊息..."
         @keyup.enter="sendBtnHandler(userMessage)"
       >
-      <button @click="sendBtnHandler(userMessage)">
+      <button
+        :disabled="loading || !userMessage.trim()"
+        @click="sendBtnHandler(userMessage)"
+      >
         <SendIcon />
       </button>
     </div>
@@ -274,6 +235,9 @@ $radius-20: 20px;
 		padding: 1rem;
 		background: $panel-bg;
 		border-bottom: 3px solid $border-color;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
 
 		h3 {
 			font-size: 18px;
@@ -281,6 +245,31 @@ $radius-20: 20px;
 			color: $white;
 			margin: 0;
 		}
+
+		.reset-btn {
+			background: transparent;
+			color: #ccc;
+			border: 1px solid #777;
+			border-radius: 6px;
+			padding: 4px 10px;
+			font-size: 12px;
+			cursor: pointer;
+			transition: all 0.15s;
+
+			&:hover {
+				color: $white;
+				border-color: $white;
+			}
+		}
+	}
+
+	.loading-bar {
+		padding: 6px 18px;
+		background: rgba(255, 255, 255, 0.05);
+		color: #aaa;
+		font-size: 12px;
+		font-style: italic;
+		border-top: 1px solid rgba(255, 255, 255, 0.08);
 	}
 
 	.chat-area {
@@ -360,37 +349,6 @@ $radius-20: 20px;
 					flex-direction: column;
 					gap: 0.5rem;
 
-					.relation-area {
-						width: 100%;
-						display: flex;
-						align-items: center;
-						margin-top: 8px;
-						margin-bottom: 8px;
-
-						.relation-table {
-							min-width: max-content;
-							font-size: 13px;
-						}
-
-						.relation-table th,
-						.relation-table td {
-							border: 1px solid #ccc;
-							text-align: left;
-							padding: 0px 8px;
-							line-height: 1.1;
-							vertical-align: middle;
-						}
-
-						.relation-table td {
-							height: 2.5rem;
-						}
-
-						.relation-table th {
-							font-weight: bold;
-							text-align: center;
-						}
-					}
-
 					.message--bubble {
 						border: 1px solid $white;
 						border-radius: $radius-10;
@@ -405,6 +363,11 @@ $radius-20: 20px;
 							padding-left: 16px;
 							padding-right: 16px;
 							font-size: 16px;
+						}
+
+						&--error {
+							border-color: #c97070;
+							background: #4a2a2a;
 						}
 					}
 

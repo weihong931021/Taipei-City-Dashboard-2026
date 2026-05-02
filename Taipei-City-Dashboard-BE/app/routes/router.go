@@ -58,7 +58,7 @@ func configureUserRoutes() {
 	userRoutes := RouterGroup.Group("/user")
 	userRoutes.Use(middleware.LimitAPIRequests(global.UserLimitAPIRequestsTimes, global.LimitRequestsDuration))
 	userRoutes.Use(middleware.LimitTotalRequests(global.UserLimitTotalRequestsTimes, global.TokenExpirationDuration))
-	userRoutes.Use(middleware.IsLoggedIn())
+	// userRoutes.Use(middleware.IsLoggedIn()) // dev: auth disabled
 	{
 		userRoutes.GET("/me", controllers.GetUserInfo)
 		userRoutes.PATCH("/me", controllers.EditUserInfo)
@@ -66,7 +66,7 @@ func configureUserRoutes() {
 		userRoutes.GET("/:id/viewpoint", controllers.GetViewPointByUserID)
 		userRoutes.DELETE("/:id/viewpoint/:viewpointid", controllers.DeleteViewPoint)
 	}
-	userRoutes.Use(middleware.IsSysAdm())
+	// userRoutes.Use(middleware.IsSysAdm()) // dev: auth disabled
 	{
 		userRoutes.GET("/", controllers.GetAllUsers)
 		userRoutes.PATCH("/:id", controllers.UpdateUserByID)
@@ -114,7 +114,7 @@ func configureComponentRoutes() {
 		componentRoutes.GET("/:id/chart", controllers.GetComponentChartData)
 		componentRoutes.GET("/:id/history", controllers.GetComponentHistoryData)
 	}
-	componentRoutes.Use(middleware.IsSysAdm())
+	// componentRoutes.Use(middleware.IsSysAdm()) // dev: auth disabled
 	{
 		componentRoutes.
 			POST("/", controllers.CreateComponent).
@@ -136,14 +136,14 @@ func configureDashboardRoutes() {
 		dashboardRoutes.
 			GET("/:index", controllers.GetDashboardByIndex)
 	}
-	dashboardRoutes.Use(middleware.IsLoggedIn())
+	// dashboardRoutes.Use(middleware.IsLoggedIn()) // dev: auth disabled
 	{
 		dashboardRoutes.POST("/", controllers.CreatePersonalDashboard)
 		dashboardRoutes.
 			PATCH("/:index", controllers.UpdateDashboard).
 			DELETE("/:index", controllers.DeleteDashboard)
 	}
-	dashboardRoutes.Use(middleware.IsSysAdm())
+	// dashboardRoutes.Use(middleware.IsSysAdm()) // dev: auth disabled
 	{
 		dashboardRoutes.POST("/public", controllers.CreatePublicDashboard)
 		dashboardRoutes.GET("/check-index/:index", controllers.CheckDashboardIndex)
@@ -154,12 +154,12 @@ func configureIssueRoutes() {
 	issueRoutes := RouterGroup.Group("/issue")
 	issueRoutes.Use(middleware.LimitAPIRequests(global.IssueLimitAPIRequestsTimes, global.LimitRequestsDuration))
 	issueRoutes.Use(middleware.LimitTotalRequests(global.IssueLimitTotalRequestsTimes, global.LimitRequestsDuration))
-	issueRoutes.Use(middleware.IsLoggedIn())
+	// issueRoutes.Use(middleware.IsLoggedIn()) // dev: auth disabled
 	{
 		issueRoutes.
 			POST("/", controllers.CreateIssue)
 	}
-	issueRoutes.Use(middleware.IsSysAdm())
+	// issueRoutes.Use(middleware.IsSysAdm()) // dev: auth disabled
 	{
 		issueRoutes.
 			GET("/", controllers.GetAllIssues)
@@ -172,8 +172,8 @@ func configureIncidentRoutes() {
 	incidentRoutes := RouterGroup.Group("/incident")
 	incidentRoutes.Use(middleware.LimitAPIRequests(global.IssueLimitAPIRequestsTimes, global.LimitRequestsDuration))
 	incidentRoutes.Use(middleware.LimitTotalRequests(global.IssueLimitTotalRequestsTimes, global.LimitRequestsDuration))
-	incidentRoutes.Use(middleware.IsLoggedIn())
-	incidentRoutes.Use(middleware.IsSysAdm())
+	// incidentRoutes.Use(middleware.IsLoggedIn()) // dev: auth disabled
+	// incidentRoutes.Use(middleware.IsSysAdm()) // dev: auth disabled
 	{
 		incidentRoutes.GET("/", controllers.GetIncident)
 		incidentRoutes.POST("/", controllers.CreateIncident)
@@ -189,7 +189,7 @@ func configureContributorRoutes() {
 	{
 		contributorRoutes.GET("/", controllers.GetAllContributors)
 	}
-	contributorRoutes.Use(middleware.IsSysAdm())
+	// contributorRoutes.Use(middleware.IsSysAdm()) // dev: auth disabled
 	{
 		contributorRoutes.POST("/", controllers.CreateContributor)
 		contributorRoutes.PATCH("/:id", controllers.UpdateContributor)
@@ -201,7 +201,7 @@ func configureAIRoutes() {
 	aiRoutes := RouterGroup.Group("/ai")
 	aiRoutes.Use(middleware.LimitAPIRequests(global.ComponentLimitAPIRequestsTimes, global.LimitRequestsDuration))
 	aiRoutes.Use(middleware.LimitTotalRequests(global.ComponentLimitTotalRequestsTimes, global.LimitRequestsDuration))
-	aiRoutes.Use(middleware.IsLoggedIn())
+	// aiRoutes.Use(middleware.IsLoggedIn()) // dev: 暫時關掉,讓 /ai-assistant 不用登入也能玩
 	{
 		aiRoutes.POST("/chat/twai", controllers.ChatWithTWCC)
 	}

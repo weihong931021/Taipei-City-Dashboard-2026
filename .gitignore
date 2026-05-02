@@ -30,6 +30,7 @@ dist.tar.gz
 !Taipei-City-Dashboard-DE/docker/develop/gitsync.sh
 !Taipei-City-Dashboard-DE/docker/prod/gitsync.sh
 !handoff/run_all.sh
+!handoff/scripts/*.sh
 # Binaries for programs and plugins
 *.exe
 *.exe~
@@ -77,3 +78,5 @@ Taipei-City-Dashboard-DE/docker/prod/.env
 # 30MB Linux x86_64 ONNX runtime — 由 BE Dockerfile 自己下載，不入版控
 .onnx_runtime/
 
+# Claude Code workspace state (memory, scheduled tasks, local cache)
+.claude/

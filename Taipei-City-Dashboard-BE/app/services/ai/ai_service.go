@@ -41,13 +41,21 @@ type AIChatRequest struct {
 
 // ChatWithTWCC handles the AI conversation logic including retries, tool calling loop, and logging.
 func ChatWithTWCC(ctx context.Context, req AIChatRequest, options ...llms.CallOption) (*models.AIChatLog, error) {
+	log, _, err := ChatWithTWCCDetailed(ctx, req, options...)
+	return log, err
+}
+
+// ChatWithTWCCDetailed returns the chat log + the raw tool invocations from this turn.
+// FE uses tool invocations to render UI side-effects (markers, route lines) without trusting LLM text formatting.
+func ChatWithTWCCDetailed(ctx context.Context, req AIChatRequest, options ...llms.CallOption) (*models.AIChatLog, []ToolInvocation, error) {
 	if err := aiSemaphore.Acquire(ctx, 1); err != nil {
-		return nil, fmt.Errorf("server too busy: %v", err)
+		return nil, nil, fmt.Errorf("server too busy: %v", err)
 	}
 	defer aiSemaphore.Release(1)
 
 	session := newSession(req, options...)
-	return session.run(ctx)
+	log, err := session.run(ctx)
+	return log, session.toolInvocations, err
 }
 
 func newSession(req AIChatRequest, options ...llms.CallOption) *aiSession {
@@ -64,6 +72,13 @@ func newSession(req AIChatRequest, options ...llms.CallOption) *aiSession {
 	return s
 }
 
+// ToolInvocation captures one tool call + its raw result for FE rendering.
+type ToolInvocation struct {
+	Name   string `json:"name"`
+	Args   string `json:"args"`
+	Result string `json:"result"`
+}
+
 type aiSession struct {
 	req             AIChatRequest
 	options         []llms.CallOption
@@ -73,6 +88,7 @@ type aiSession struct {
 	totalOutput     int
 	toolUsed        bool
 	executedTools   []string
+	toolInvocations []ToolInvocation
 	lastResp        *llms.ContentResponse
 	lastErr         error
 	startTime       time.Time
@@ -162,11 +178,26 @@ func (s *aiSession) executeTools(ctx context.Context, toolCalls []llms.ToolCall)
 			result = fmt.Sprintf("Error: %v. Please verify arguments.", err)
 			logs.FError("Tool Error: %v", err)
 		}
+		// FE gets the full result (needs geometry, full POI lat/lng, etc.).
+		s.toolInvocations = append(s.toolInvocations, ToolInvocation{
+			Name:   tc.FunctionCall.Name,
+			Args:   tc.FunctionCall.Arguments,
+			Result: result,
+		})
+
+		// LLM-facing result is truncated to keep us under TWCC's 16k context limit.
+		// compute_route geometry can be 1-2k tokens of coordinates that the LLM doesn't
+		// need; search_nearby_pois with 10 results can be 2k+. Cap at 1500 chars.
+		llmResult := result
+		const maxLLMResult = 1500
+		if len(llmResult) > maxLLMResult {
+			llmResult = llmResult[:maxLLMResult] + "\n...(已截斷,完整結果已傳給前端)"
+		}
 
 		s.currentMessages = append(s.currentMessages, llms.MessageContent{
 			Role: llms.ChatMessageTypeTool,
 			Parts: []llms.ContentPart{llms.ToolCallResponse{
-				ToolCallID: tc.ID, Name: tc.FunctionCall.Name, Content: result,
+				ToolCallID: tc.ID, Name: tc.FunctionCall.Name, Content: llmResult,
 			}},
 		})
 	}
