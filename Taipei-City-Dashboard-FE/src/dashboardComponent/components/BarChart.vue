@@ -20,33 +20,31 @@ const emits = defineEmits([
 	"fly"
 ]);
 
+// 多 series（三維資料 e.g. 汽車/機車）時關掉 distributed，每個 series 用自己的 color
+const isMultiSeries = (props.series?.length || 0) > 1;
+const hasCategories = !!props.chart_config.categories;
+
 const chartOptions = ref({
 	chart: {
 		offsetY: 15,
 		stacked: true,
-		toolbar: {
-			show: false,
-		},
+		toolbar: { show: false },
 	},
 	colors: [...props.chart_config.color],
 	dataLabels: {
 		offsetX: 20,
 		textAnchor: "start",
 	},
-	grid: {
-		show: false,
-	},
-	legend: {
-		show: false,
-	},
+	grid: { show: false },
+	legend: isMultiSeries
+		? { show: true, position: "top", labels: { colors: "#a8a8a8" } }
+		: { show: false },
 	plotOptions: {
 		bar: {
 			borderRadius: 2,
-			distributed: true,
+			distributed: !isMultiSeries,
 			horizontal: true,
-			dataLabels: {
-				hideOverflowingLabels: false
-			},
+			dataLabels: { hideOverflowingLabels: false },
 		},
 	},
 	stroke: {
@@ -54,51 +52,43 @@ const chartOptions = ref({
 		show: true,
 		width: 0,
 	},
-	// The class "chart-tooltip" could be edited in /assets/styles/chartStyles.css
 	tooltip: {
-		custom: function ({
-			series,
-			seriesIndex,
-			dataPointIndex,
-			w,
-		}) {
+		custom: function ({ series, seriesIndex, dataPointIndex, w }) {
+			const label = w.globals.labels[dataPointIndex];
+			const seriesName = w.globals.seriesNames?.[seriesIndex] || "";
+			const value = series[seriesIndex][dataPointIndex];
 			return (
 				'<div class="chart-tooltip">' +
-				"<h6>" +
-				w.globals.labels[dataPointIndex] +
-				"</h6>" +
-				"<span>" +
-				series[seriesIndex][dataPointIndex] +
-				` ${props.chart_config.unit}` +
-				"</span>" +
+				`<h6>${label}${seriesName ? ` - ${seriesName}` : ""}</h6>` +
+				`<span>${value} ${props.chart_config.unit}</span>` +
 				"</div>"
 			);
 		},
 		followCursor: true,
 	},
 	xaxis: {
-		axisBorder: {
-			show: false,
-		},
-		axisTicks: {
-			show: false,
-		},
-		labels: {
-			show: false,
-		},
+		axisBorder: { show: false },
+		axisTicks: { show: false },
+		labels: { show: false },
 		type: "category",
+		...(hasCategories && { categories: props.chart_config.categories }),
 	},
 	yaxis: {
 		labels: {
 			formatter: function (value) {
-				return value.length > 7 ? value.slice(0, 6) + "..." : value;
+				return typeof value === "string" && value.length > 7
+					? value.slice(0, 6) + "..."
+					: value;
 			},
 		},
 	},
 });
 
 const chartHeight = computed(() => {
-	return `${40 + props.series[0].data.length * 30}`;
+	const itemCount = isMultiSeries
+		? props.chart_config.categories?.length || props.series[0]?.data?.length || 0
+		: props.series[0]?.data?.length || 0;
+	return `${40 + itemCount * 30}`;
 });
 
 const selectedIndex = ref(null);

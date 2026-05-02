@@ -50,6 +50,7 @@ defineProps({
 	p {
 		max-height: var(--font-ms);
 		color: var(--color-complement-text);
+		white-space: nowrap;
 	}
 
 	&-fill {

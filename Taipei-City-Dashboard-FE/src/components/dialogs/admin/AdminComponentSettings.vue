@@ -569,6 +569,15 @@ function handleClose() {
                   <option value="youbike">
                     youbike (符號圖)
                   </option>
+                  <option value="ev_charging">
+                    ev_charging (符號圖)
+                  </option>
+                  <option value="ev_motor">
+                    ev_motor (符號圖)
+                  </option>
+                  <option value="restaurant">
+                    restaurant (符號圖)
+                  </option>
                   <option value="bus">
                     bus (符號圖)
                   </option>

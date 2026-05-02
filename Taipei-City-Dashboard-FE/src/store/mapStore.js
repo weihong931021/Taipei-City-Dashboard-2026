@@ -205,8 +205,8 @@ export const useMapStore = defineStore("map", {
 						})
 						.addLayer(metroTaipeiVillage);
 				});
-			// Taipei 3D Buildings
-			if (!authStore.isMobileDevice) {
+			// Taipei 3D Buildings — 需要 VITE_MAPBOXTILE 私有 tileset 才能用
+			if (!authStore.isMobileDevice && import.meta.env.VITE_MAPBOXTILE) {
 				this.map
 					.addSource("taipei_building_3d_source", {
 						type: "vector",
@@ -310,6 +310,9 @@ export const useMapStore = defineStore("map", {
 				"cctv",
 				"live",
 				"youbike_elec",
+				"ev_charging",
+				"ev_motor",
+				"restaurant",
 			];
 			images.forEach((element) => {
 				this.map.loadImage(

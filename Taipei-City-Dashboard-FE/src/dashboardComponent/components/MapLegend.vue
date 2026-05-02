@@ -1,7 +1,7 @@
 <!-- Developed by Taipei Urban Intelligence Center 2023-2024-->
 
 <script setup>
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import bus from "../assets/map/bus.png";
 import metro from "../assets/map/metro.png";
 import triangle_green from "../assets/map/triangle_green.png";
@@ -13,6 +13,9 @@ import cross_bold from "../assets/map/cross_bold.png";
 import cross_normal from "../assets/map/cross_normal.png";
 import cctv from "../assets/map/cctv.png";
 import live from "../assets/map/live.png";
+import ev_charging from "../assets/map/ev_charging.png";
+import ev_motor from "../assets/map/ev_motor.png";
+import restaurant from "../assets/map/restaurant.png";
 
 const props = defineProps([
 	"chart_config",
@@ -20,7 +23,31 @@ const props = defineProps([
 	"map_config",
 	"map_filter",
 	"map_filter_on",
+	"activeChart",
 ]);
+
+// MapLegend 優先用 map_config（裡面才有 icon / type）
+// 同名（同 title + icon）的圖層 dedup，避免出現重複 legend
+// 只有 map_config 為空時才 fallback 用 series
+const legendItems = computed(() => {
+	const mc = props.map_config || [];
+	if (mc.length > 0) {
+		const seen = new Set();
+		return mc
+			.filter((m) => {
+				const key = `${m.title}|${m.icon || ""}`;
+				if (seen.has(key)) return false;
+				seen.add(key);
+				return true;
+			})
+			.map((m) => ({ name: m.title, type: m.type, icon: m.icon }));
+	}
+	const s = props.series;
+	if (Array.isArray(s) && s.length > 0 && s[0]?.name !== undefined) {
+		return s;
+	}
+	return [];
+});
 const emits = defineEmits([
 	"filterByParam",
 	"filterByLayer",
@@ -53,6 +80,12 @@ function returnIcon(name) {
 		return cctv;
 	case "live":
 		return live;
+	case "ev_charging":
+		return ev_charging;
+	case "ev_motor":
+		return ev_motor;
+	case "restaurant":
+		return restaurant;
 	default:
 		return "";
 	}
@@ -92,11 +125,14 @@ function handleDataSelection(index) {
 </script>
 
 <template>
-  <div class="maplegend">
+  <div
+    v-if="!activeChart || activeChart === 'MapLegend'"
+    class="maplegend"
+  >
     <div class="maplegend-legend">
       <button
-        v-for="(item, index) in series"
-        :key="item.name"
+        v-for="(item, index) in legendItems"
+        :key="`${item.name}-${index}`"
         :class="{
           'maplegend-legend-item': true,
           'maplegend-filter': map_filter_on && map_filter,

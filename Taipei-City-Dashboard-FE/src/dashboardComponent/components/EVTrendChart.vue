@@ -180,7 +180,10 @@ watch(
 </script>
 
 <template>
-  <div v-if="activeChart === 'EVTrendChart'">
+  <div
+    v-if="activeChart === 'EVTrendChart'"
+    class="ev-trend-root"
+  >
     <!-- KPI row -->
     <div class="ev-kpi-row">
       <div class="ev-kpi">
@@ -206,9 +209,6 @@ watch(
 
     <!-- Controls row -->
     <div class="ev-controls">
-      <select v-model="selectedCity" class="selectBtn">
-        <option v-for="city in cities" :key="city" :value="city">{{ city }}</option>
-      </select>
       <div class="ev-type-toggle">
         <button
           v-for="type in vehicleTypes"
@@ -272,12 +272,21 @@ watch(
   flex-shrink: 0;
 }
 
-/* Controls */
+/* root 不設 position: relative — 讓 .ev-controls 的 containing block 落到外層
+   .dashboardcomponent (那個 position: relative 的 card)，這樣才能浮到城市下拉的同一排 */
+.ev-trend-root {
+  position: static;
+}
+
+/* Controls — 浮到 dashboard 卡片右上角，跟「雙北 ▼」同一排 */
 .ev-controls {
+  position: absolute;
+  top: 4.4rem;
+  right: 1rem;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 2px;
+  margin: 0;
+  z-index: 10;
 }
 
 /* Matches DashboardComponent .selectBtn; global select{} handles border/radius/padding */

@@ -3,7 +3,7 @@
 --
 
 -- Dumped from database version 16.4
--- Dumped by pg_dump version 16.8 (Homebrew)
+-- Dumped by pg_dump version 16.4
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -16,6 +16,197 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: component_charts; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.component_charts (
+    index character varying NOT NULL,
+    color character varying[],
+    types character varying[],
+    unit character varying
+);
+
+
+ALTER TABLE public.component_charts OWNER TO postgres;
+
+--
+-- Name: component_maps; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.component_maps (
+    id bigint NOT NULL,
+    index character varying NOT NULL,
+    title character varying NOT NULL,
+    type character varying NOT NULL,
+    source character varying NOT NULL,
+    size character varying,
+    icon character varying,
+    paint json,
+    property json
+);
+
+
+ALTER TABLE public.component_maps OWNER TO postgres;
+
+--
+-- Name: component_maps_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.component_maps_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.component_maps_id_seq OWNER TO postgres;
+
+--
+-- Name: component_maps_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.component_maps_id_seq OWNED BY public.component_maps.id;
+
+
+--
+-- Name: components; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.components (
+    id bigint NOT NULL,
+    index character varying NOT NULL,
+    name character varying NOT NULL
+);
+
+
+ALTER TABLE public.components OWNER TO postgres;
+
+--
+-- Name: components_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.components_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.components_id_seq OWNER TO postgres;
+
+--
+-- Name: components_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.components_id_seq OWNED BY public.components.id;
+
+
+--
+-- Name: dashboard_groups; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.dashboard_groups (
+    dashboard_id bigint NOT NULL,
+    group_id bigint NOT NULL
+);
+
+
+ALTER TABLE public.dashboard_groups OWNER TO postgres;
+
+--
+-- Name: dashboards; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.dashboards (
+    id bigint NOT NULL,
+    index character varying NOT NULL,
+    name character varying NOT NULL,
+    components integer[],
+    icon text,
+    updated_at timestamp with time zone NOT NULL,
+    created_at timestamp with time zone NOT NULL
+);
+
+
+ALTER TABLE public.dashboards OWNER TO postgres;
+
+--
+-- Name: dashboards_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.dashboards_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.dashboards_id_seq OWNER TO postgres;
+
+--
+-- Name: dashboards_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.dashboards_id_seq OWNED BY public.dashboards.id;
+
+
+--
+-- Name: query_charts; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.query_charts (
+    index character varying,
+    history_config json,
+    map_config_ids integer[],
+    map_filter json,
+    time_from character varying,
+    time_to character varying,
+    update_freq integer,
+    update_freq_unit character varying,
+    source character varying,
+    short_desc text,
+    long_desc text,
+    use_case text,
+    links text[],
+    contributors text[],
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    query_type character varying,
+    query_chart text,
+    query_history text,
+    city text
+);
+
+
+ALTER TABLE public.query_charts OWNER TO postgres;
+
+--
+-- Name: component_maps id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.component_maps ALTER COLUMN id SET DEFAULT nextval('public.component_maps_id_seq'::regclass);
+
+
+--
+-- Name: components id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.components ALTER COLUMN id SET DEFAULT nextval('public.components_id_seq'::regclass);
+
+
+--
+-- Name: dashboards id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.dashboards ALTER COLUMN id SET DEFAULT nextval('public.dashboards_id_seq'::regclass);
 
 
 --
@@ -31,11 +222,9 @@ aging_kpi	{#F65658,#F49F36,#F5C860,#9AC17C,#4CB495,#569C9A,#60819C,#2F8AB1}	{Tex
 aging_workforce_trend	{#24B0DD,#56B96D,#F8CF58,#F5AD4A,#E170A6,#ED6A45,#AF4137,#10294A}	{BarPercentChart,RadarChart,ColumnChart}	%
 bike_network	{#a0b8e8,#b7ff98}	{DonutChart,BarChart}	公里
 bike_map	{#a0b8e8,#b7ff98}	{MapLegend}	條
-ev_charging_station	{#7B1FA2,#0ABAB5}	{BarChart,MapLegend}	個
 power_usage_ratio	{#3498DB,#27AE60,#F39C12,#E74C3C,#95A5A6}	{DonutChart}	%
-env_restaurant	{#F39C12}	{BarChart,MapLegend}	家
-street_tree_dist	{#1B5E20}	{BarChart}	棵
-green_park_type	{#D4DC8E,#7BC97A,#5BA85C,#E8D44C}	{TreemapChart,BarChart}	公頃
+ev_charging_station	{#27AE60,#3498DB}	{BarChart}	個
+env_restaurant	{#27AE60}	{BarChart}	家
 \.
 
 
@@ -48,10 +237,10 @@ COPY public.component_maps (id, index, title, type, source, size, icon, paint, p
 99	youbike_realtime_metrotaipei	youbike站點	symbol	geojson	\N	youbike	{}	[{"key":"sna","name":"場站名稱"},{"key":"sno","name":"場站ID"},{"key":"available_return_bikes","name":"可還車位"},{"key":"available_rent_general_bikes","name":"剩餘車輛"}]
 100	bike_network_tpe	自行車路網	line	geojson	\N	\N	{"line-color":["match",["get","direction"],"雙向","#097138","單向","#007BFF","#808080"]}	[\r\n  {"key": "data_time", "name": "數據時間"},\r\n  {"key": "route_name", "name": "路線名稱"},\r\n  {"key": "city_code", "name": "城市代碼"},\r\n  {"key": "city", "name": "城市"},\r\n  {"key": "road_section_start", "name": "起點路段"},\r\n  {"key": "road_section_end", "name": "終點路段"},\r\n  {"key": "direction", "name": "方向"},\r\n  {"key": "cycling_length", "name": "自行車道長度"},\r\n  {"key": "finished_time", "name": "完工時間"},\r\n  {"key": "update_time", "name": "更新時間"}\r\n]
 101	bike_network_metrotaipei	自行車路網	line	geojson	\N	\N	{"line-color":["match",["get","direction"],"雙向","#097138","單向","#007BFF","#808080"]}	[\r\n  {"key": "data_time", "name": "數據時間"},\r\n  {"key": "route_name", "name": "路線名稱"},\r\n  {"key": "city_code", "name": "城市代碼"},\r\n  {"key": "city", "name": "城市"},\r\n  {"key": "road_section_start", "name": "起點路段"},\r\n  {"key": "road_section_end", "name": "終點路段"},\r\n  {"key": "direction", "name": "方向"},\r\n  {"key": "cycling_length", "name": "自行車道長度"},\r\n  {"key": "finished_time", "name": "完工時間"},\r\n  {"key": "update_time", "name": "更新時間"}\r\n]
-9	ev_charging_car_tpe	汽車	symbol	geojson	\N	ev_charging	{}	[{"key":"station_name","name":"站名"},{"key":"district","name":"行政區"},{"key":"address","name":"地址"},{"key":"category","name":"類別"},{"key":"socket_type","name":"插座型式"},{"key":"plug_count","name":"插槍數"},{"key":"fee","name":"收費"}]
-10	ev_charging_car_new_tpe	汽車	symbol	geojson	\N	ev_charging	{}	[{"key":"station_name","name":"站名"},{"key":"district","name":"行政區"},{"key":"address","name":"地址"},{"key":"category","name":"類別"},{"key":"socket_type","name":"插座型式"},{"key":"plug_count","name":"插槍數"},{"key":"fee","name":"收費"}]
-11	ev_charging_motor_tpe	機車	symbol	geojson	\N	ev_motor	{}	[{"key":"station_name","name":"站名"},{"key":"district","name":"行政區"},{"key":"address","name":"地址"},{"key":"category","name":"類別"},{"key":"plug_type","name":"插座型式"},{"key":"plug_count","name":"插槍數"}]
-12	ev_charging_motor_new_tpe	機車	symbol	geojson	\N	ev_motor	{}	[{"key":"station_name","name":"站名"},{"key":"district","name":"行政區"},{"key":"address","name":"地址"},{"key":"category","name":"類別"},{"key":"plug_type","name":"插座型式"},{"key":"plug_count","name":"插槍數"}]
+9	ev_charging_car_tpe	電動汽車充電站	symbol	geojson	\N	ev_charging	{}	[{"key":"station_name","name":"站名"},{"key":"district","name":"行政區"},{"key":"address","name":"地址"},{"key":"category","name":"類別"},{"key":"socket_type","name":"插座型式"},{"key":"plug_count","name":"插槍數"},{"key":"fee","name":"收費"}]
+10	ev_charging_car_new_tpe	電動汽車充電站	symbol	geojson	\N	ev_charging	{}	[{"key":"station_name","name":"站名"},{"key":"district","name":"行政區"},{"key":"address","name":"地址"},{"key":"category","name":"類別"},{"key":"socket_type","name":"插座型式"},{"key":"plug_count","name":"插槍數"},{"key":"fee","name":"收費"}]
+11	ev_charging_motor_tpe	電動機車充電站	symbol	geojson	\N	ev_motor	{}	[{"key":"station_name","name":"站名"},{"key":"district","name":"行政區"},{"key":"address","name":"地址"},{"key":"category","name":"類別"},{"key":"plug_type","name":"插座型式"},{"key":"plug_count","name":"插槍數"}]
+12	ev_charging_motor_new_tpe	電動機車充電站	symbol	geojson	\N	ev_motor	{}	[{"key":"station_name","name":"站名"},{"key":"district","name":"行政區"},{"key":"address","name":"地址"},{"key":"category","name":"類別"},{"key":"plug_type","name":"插座型式"},{"key":"plug_count","name":"插槍數"}]
 13	env_restaurant_tpe	環保餐廳	symbol	geojson	\N	restaurant	{}	[{"key":"name","name":"店名"},{"key":"district","name":"行政區"},{"key":"address","name":"地址"},{"key":"phone","name":"電話"},{"key":"eco_tags","name":"環保作為"}]
 14	env_restaurant_new_tpe	環保餐廳	symbol	geojson	\N	restaurant	{}	[{"key":"name","name":"店名"},{"key":"district","name":"行政區"},{"key":"address","name":"地址"},{"key":"phone","name":"電話"}]
 \.
@@ -73,20 +262,23 @@ COPY public.components (id, index, name) FROM stdin;
 501	ev_charging_station	雙北電動車充電樁
 502	power_usage_ratio	雙北用電結構（住宅 / 服務業 / 工業）
 503	env_restaurant	雙北環保餐廳
-504	street_tree_dist	台北行道樹分布（各區）
-505	green_park_type	台北綠地組成（公頃）
 \.
 
 
 --
--- Data for Name: contributors; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: dashboard_groups; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.contributors (id, user_id, user_name, image, link, identity, description, include, created_at, updated_at) FROM stdin;
-1	doit	臺北市政府資訊局	doit.png	https://doit.gov.taipei/	\N	\N	f	2024-05-09 01:58:47.164185+00	2024-05-09 01:58:47.164185+00
-2	ntpc	新北市政府資訊中心	ntpc.png	https://www.imc.ntpc.gov.tw/	\N	\N	f	2024-05-09 01:58:47.164185+00	2024-05-09 01:58:47.164185+00
-3	Yuan	Yuan (Hackathon)	doit.png	https://github.com	\N	\N	f	2026-05-02 06:00:00+00	2026-05-02 06:00:00+00
+COPY public.dashboard_groups (dashboard_id, group_id) FROM stdin;
+106	2
+356	2
+355	3
+359	3
+358	3
+360	4
+601	3
 \.
+
 
 --
 -- Data for Name: dashboards; Type: TABLE DATA; Schema: public; Owner: postgres
@@ -100,29 +292,15 @@ COPY public.dashboards (id, index, name, components, icon, updated_at, created_a
 358	practical_transportation_newtpe	務實交通	{60,212,213}	directions_car	2025-03-12 08:00:38.75842+00	2024-03-21 09:38:37.66+00
 1	09a25cd9cb7d	收藏組件	\N	favorite	2025-03-14 07:34:22.247753+00	2025-03-14 07:34:22.247753+00
 2	3245d9eace5f	我的新儀表板	{215,218,216,213,212,214,60,146}	star	2025-03-14 14:55:11.732116+00	2025-03-14 14:55:11.732116+00
-601	sustainability_newtpe	永續環境	{300,501,502,503,504,505}	park	2026-05-02 06:00:00+00	2026-05-02 06:00:00+00
-\.
-
-
-COPY public.groups (id, name, is_personal, create_by) FROM stdin;
-1	public	f	\N
-2	taipei	f	\N
-3	metrotaipei	f	\N
+360	042f3dd8cbe5	收藏組件	\N	favorite	2026-05-01 16:11:58.90474+00	2026-05-01 16:11:58.90474+00
+601	sustainability_newtpe	永續環境	{502,503,501}	park	2026-05-02 06:26:11.98893+00	2026-05-02 05:57:41.316969+00
 \.
 
 
 --
--- Data for Name: issues; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: query_charts; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.issues (id, title, user_name, user_id, context, description, decision_desc, status, updated_by, created_at, updated_at) FROM stdin;
-4	test	Drew	1	test	test	測試	不處理	doit	2024-03-15 07:33:39.695288+00	2024-07-26 06:37:55.038985+00
-\.
-
-
-ALTER TABLE public.query_charts OWNER TO postgres;
-\.
-TRUNCATE TABLE public.query_charts RESTART IDENTITY CASCADE;
 COPY public.query_charts (index, history_config, map_config_ids, map_filter, time_from, time_to, update_freq, update_freq_unit, source, short_desc, long_desc, use_case, links, contributors, created_at, updated_at, query_type, query_chart, query_history, city) FROM stdin;
 aging_kpi	\N	{}	{}	static	\N	0	\N	主計處	此圖顯示雙北長照關懷各項指標。	此圖表呈現雙北長照關懷相關指標，包括 扶老比、扶幼比、扶養比 及 老化指數。扶老比代表每百名勞動人口需扶養的老年人口數，扶幼比則是需扶養的兒童人口數，而扶養比則合計這兩者，反映整體社會負擔程度。老化指數則比較老年人口與兒童人口比例，顯示人口結構的高齡化趨勢。這些數據可用於評估長照需求，並規劃資源分配與政策方向，以因應人口老化帶來的挑戰。	在制定長照政策時，政府可運用 扶老比、扶幼比、扶養比 及 老化指數 來評估未來照護需求。例如，某城市發現扶老比上升且老化指數超過 100，代表老年人口已多於兒童，預示長照需求將持續增加。政府可據此增設長照機構、強化居家照護服務，並鼓勵社區共融計畫，以減輕勞動人口的扶養壓力，確保高齡者獲得適切照顧。	{https://data.taipei/dataset/detail?id=64c8a3a0-3b9a-4f49-a13a-fb1eb2ffa4b1,https://data.ntpc.gov.tw/datasets/8308ab58-62d1-424e-8314-24b65b7ab492}	{doit,ntpc}	2023-12-20 05:56:00+00	2024-06-12 06:02:41.642+00	three_d	select y_axis,icon ,round(avg(data))data  \r\nfrom(\r\nselect '扶老比' as y_axis, percent30 as data ,'%' as icon \r\nfrom public.city_age_distribution_taipei \r\nwhere 年份= (select max(年份) from public.city_age_distribution_taipei ) and  區域別='總計' and 統計類型='計'\r\nunion all\r\nselect '扶幼比' as y_axis, percent31 as data ,'%' as icon \r\nfrom public.city_age_distribution_taipei \r\nwhere 年份= (select max(年份) from public.city_age_distribution_taipei ) and  區域別='總計' and 統計類型='計'\r\nunion all\r\nselect '扶養比' as y_axis, percent32 as data ,'%' as icon \r\nfrom public.city_age_distribution_taipei \r\nwhere 年份= (select max(年份) from public.city_age_distribution_taipei ) and  區域別='總計' and 統計類型='計'\r\nunion all\r\nselect '老化指數' as y_axis, percent33 as data ,'%' as icon \r\nfrom public.city_age_distribution_taipei \r\nwhere 年份= (select max(年份) from public.city_age_distribution_taipei ) and  區域別='總計' and 統計類型='計'\r\nunion all\r\nselect '扶老比' as y_axis, avg(percent30) as data ,'%' as icon \r\nfrom public.city_age_distribution_newtaipei \r\nwhere 年份= (select max(年份) from public.city_age_distribution_newtaipei )  and 統計類型='計'\r\nunion all\r\nselect '扶幼比' as y_axis, avg(percent31) as data ,'%' as icon \r\nfrom public.city_age_distribution_newtaipei \r\nwhere 年份= (select max(年份) from public.city_age_distribution_newtaipei ) and 統計類型='計'\r\nunion all\r\nselect '扶養比' as y_axis, avg(percent32) as data ,'%' as icon \r\nfrom public.city_age_distribution_newtaipei \r\nwhere 年份= (select max(年份) from public.city_age_distribution_newtaipei )  and 統計類型='計'\r\nunion all\r\nselect '老化指數' as y_axis, avg(percent33) as data ,'%' as icon \r\nfrom public.city_age_distribution_newtaipei \r\nwhere 年份= (select max(年份) from public.city_age_distribution_newtaipei )  and 統計類型='計'\r\n)d\r\ngroup by y_axis,icon	\N	metrotaipei
 aging_kpi	\N	{}	{}	static	\N	0	\N	主計處	此圖顯示臺北長照關懷各項指標。	此圖表呈現臺北長照關懷相關指標，包括 扶老比、扶幼比、扶養比 及 老化指數。扶老比代表每百名勞動人口需扶養的老年人口數，扶幼比則是需扶養的兒童人口數，而扶養比則合計這兩者，反映整體社會負擔程度。老化指數則比較老年人口與兒童人口比例，顯示人口結構的高齡化趨勢。這些數據可用於評估長照需求，並規劃資源分配與政策方向，以因應人口老化帶來的挑戰。	在制定長照政策時，政府可運用 扶老比、扶幼比、扶養比 及 老化指數 來評估未來照護需求。例如，某城市發現扶老比上升且老化指數超過 100，代表老年人口已多於兒童，預示長照需求將持續增加。政府可據此增設長照機構、強化居家照護服務，並鼓勵社區共融計畫，以減輕勞動人口的扶養壓力，確保高齡者獲得適切照顧。	{https://data.taipei/dataset/detail?id=64c8a3a0-3b9a-4f49-a13a-fb1eb2ffa4b1}	{doit}	2023-12-20 05:56:00+00	2024-06-12 06:02:41.642+00	three_d	select y_axis,icon ,round(avg(data))data  \r\nfrom(\r\nselect '扶老比' as y_axis, percent30 as data ,'%' as icon \r\nfrom public.city_age_distribution_taipei \r\nwhere 年份= (select max(年份) from public.city_age_distribution_taipei ) and  區域別='總計' and 統計類型='計'\r\nunion all\r\nselect '扶幼比' as y_axis, percent31 as data ,'%' as icon \r\nfrom public.city_age_distribution_taipei \r\nwhere 年份= (select max(年份) from public.city_age_distribution_taipei ) and  區域別='總計' and 統計類型='計'\r\nunion all\r\nselect '扶養比' as y_axis, percent32 as data ,'%' as icon \r\nfrom public.city_age_distribution_taipei \r\nwhere 年份= (select max(年份) from public.city_age_distribution_taipei ) and  區域別='總計' and 統計類型='計'\r\nunion all\r\nselect '老化指數' as y_axis, percent33 as data ,'%' as icon \r\nfrom public.city_age_distribution_taipei \r\nwhere 年份= (select max(年份) from public.city_age_distribution_taipei ) and  區域別='總計' and 統計類型='計'\r\n)d\r\ngroup by y_axis,icon	\N	taipei
@@ -140,48 +318,109 @@ ebus_percent	\N	\N	\N	static	\N	\N	\N	交通局	顯示雙北電動公車比例	�
 ebus_percent	\N	\N	\N	static	\N	\N	\N	交通局	顯示臺北電動公車比例	此圖顯示臺北市電動公車的比例，呈現全市公車車隊中電動車所占比重，以及近年來電動公車數量的成長情形。圖表比較傳統燃油公車與電動公車的比例變化，並標示臺北市政府推動電動化政策、補助措施及其帶來的環保效益。透過這些數據，可評估臺北市電動公車的普及程度，及其在減碳與空氣品質改善上的貢獻，有助於進一步規劃更完善的公共運輸電動化策略，推動城市交通朝向低碳永續目標邁進。	可用於評估臺北市公共運輸電動化的進程，透過此圖顯示電動公車在市區公車總數中的占比及其成長趨勢。圖表呈現傳統燃油公車與電動公車的比例變化，並標示臺北市政府推動的政策措施、補助方案及相關環保效益等影響因素。透過這些數據，可分析臺北市電動公車的普及程度及其在減碳排放與空氣品質改善方面的貢獻，有助於進一步規劃更完善的公共運輸電動化策略，推動臺北朝向低碳與永續發展的城市目標邁進。	{https://tdx.transportdata.tw/api/basic/v2/Bus/Vehicle/City/Taipei?%24top=30&%24format=JSON}	{doit}	2025-02-15 05:56:00+00	2025-02-20 09:11:21.620625+00	percent	select '電動公車數量' as x_axis,y_axis,sum(data) data from \r\n(\r\nselect '電動巴士' as y_axis,count(*) as  data\r\nfrom public.bus_info_tpe\r\nwhere plate_numb like 'E%'\r\nunion all\r\nselect '非電動巴士' as y_axis,count(*) as  data\r\nfrom public.bus_info_tpe)d\r\ngroup by \r\ny_axis	\N	taipei
 youbike_availability	\N	{99}	\N	current	\N	10	minute	交通局	顯示當前雙北共享單車YouBike的使用情況。	顯示雙北地區（臺北市與新北市）當前共享單車 YouBike 的使用情況，格式為可借車輛數／全區車位數。資料來源為兩市交通局公開資料，每5分鐘更新一次，提供即時的車輛可用資訊與站點使用狀況，有助於掌握整體運行效率與民眾使用情形，亦可作為交通管理與營運調度的參考依據。	藉由顯示雙北地區 YouBike 的使用情況，以及觀察可借車輛數約為車柱總數的一半，可大致掌握目前停放於站點與使用中車輛的整體分布情形。使用者亦可透過地圖模式查詢雙北各站點的即時資訊，包括可借車輛數、可還空位數及站點位置，方便規劃路線與掌握使用狀況，提升共享單車的便利性與使用效率。	{https://tdx.transportdata.tw/api-service/swagger/basic/2cc9b888-a592-496f-99de-9ab35b7fb70d#/Bike/BikeApi_Availability_2181,https://tdx.transportdata.tw/api/basic/v2/Bike/Availability/City/NewTaipei?%24top=30&%24format=JSON}	{doit,ntpc}	2023-12-20 05:56:00+00	2024-03-19 06:08:17.99+00	percent	select x_axis,y_axis,sum(data)data\r\nfrom (select '在站車輛' as x_axis, \r\nunnest(ARRAY['可借車輛', '空位']) as y_axis, \r\nunnest(ARRAY[SUM(available_rent_general_bikes), SUM(available_return_bikes)]) as data\r\nfrom tran_ubike_realtime_new_tpe\r\nunion all \r\nselect '在站車輛' as x_axis, \r\nunnest(ARRAY['可借車輛', '空位']) as y_axis, \r\nunnest(ARRAY[SUM(available_rent_general_bikes), SUM(available_return_bikes)]) as data\r\nfrom tran_ubike_realtime)d\r\ngroup by x_axis,y_axis	\N	metrotaipei
 youbike_availability	\N	{70}	\N	current	\N	10	minute	交通局	顯示當前臺北市共享單車YouBike的使用情況。	顯示臺北市當前共享單車 YouBike 的使用情況，格式為可借車輛數／全市車位數。資料來源為臺北市政府交通局公開資料，每5分鐘更新一次，反映即時的使用狀況與車輛調度情形，可作為交通監測與市民使用參考依據。	藉由臺北市 YouBike 使用情況的顯示，以及全市可借車輛數約為車柱總數的一半，可大致掌握目前停放於站點與正在使用中的車輛數量。使用者可透過地圖模式查詢臺北市各站點的即時資訊，包括可借車輛數、可還空位數及站點位置，方便即時掌握使用狀況，提升共享單車的使用效率與便利性。	{https://tdx.transportdata.tw/api-service/swagger/basic/2cc9b888-a592-496f-99de-9ab35b7fb70d#/Bike/BikeApi_Availability_2181}	{doit}	2023-12-20 05:56:00+00	2024-03-19 06:08:17.99+00	percent	select '在站車輛' as x_axis, \r\nunnest(ARRAY['可借車輛', '空位']) as y_axis, \r\nunnest(ARRAY[SUM(available_rent_general_bikes), SUM(available_return_bikes)]) as data\r\nfrom tran_ubike_realtime	\N	taipei
-ev_charging_station	\N	{9,11}	\N	static	\N	\N	\N	data.taipei + data.ntpc	雙北電動車充電樁分布（汽車 + 機車）	整合臺北市與新北市政府開放資料，顯示電動車充電站位置、規格、收費資訊。	電動車主找充電樁 / 想換電動車的人查家附近資源	{https://data.taipei,https://data.ntpc.gov.tw}	{doit,ntpc}	2026-05-02 06:00:00+00	2026-05-02 06:00:00+00	three_d	WITH car AS (SELECT district, COUNT(*)::int AS cnt FROM charging_station_car_tpe WHERE district IS NOT NULL AND district <> '' GROUP BY district), motor AS (SELECT district, COUNT(*)::int AS cnt FROM charging_station_motor_tpe WHERE district IS NOT NULL AND district <> '' GROUP BY district), dists AS (SELECT d.district, COALESCE(c.cnt,0) AS car_cnt, COALESCE(m.cnt,0) AS motor_cnt, COALESCE(c.cnt,0)+COALESCE(m.cnt,0) AS total FROM (SELECT district FROM car UNION SELECT district FROM motor) d LEFT JOIN car c USING (district) LEFT JOIN motor m USING (district)) SELECT * FROM (SELECT district AS x_axis, '汽車' AS y_axis, car_cnt AS data, total, 1 AS so FROM dists UNION ALL SELECT district AS x_axis, '機車' AS y_axis, motor_cnt AS data, total, 2 AS so FROM dists) z ORDER BY total DESC, so;	\N	taipei
-ev_charging_station	\N	{9,10,11,12}	\N	static	\N	\N	\N	data.taipei + data.ntpc	雙北電動車充電樁分布（汽車 + 機車）	整合臺北市與新北市政府開放資料，顯示電動車充電站位置、規格、收費資訊。	電動車主找充電樁 / 想換電動車的人查家附近資源	{https://data.taipei,https://data.ntpc.gov.tw}	{doit,ntpc}	2026-05-02 06:00:00+00	2026-05-02 06:00:00+00	three_d	WITH car AS (SELECT district, COUNT(*)::int AS cnt FROM (SELECT district FROM charging_station_car_tpe UNION ALL SELECT district FROM charging_station_car_new_tpe) c WHERE district IS NOT NULL AND district <> '' GROUP BY district), motor AS (SELECT district, COUNT(*)::int AS cnt FROM (SELECT district FROM charging_station_motor_tpe UNION ALL SELECT district FROM charging_station_motor_new_tpe) m WHERE district IS NOT NULL AND district <> '' GROUP BY district), dists AS (SELECT d.district, COALESCE(c.cnt,0) AS car_cnt, COALESCE(mo.cnt,0) AS motor_cnt, COALESCE(c.cnt,0)+COALESCE(mo.cnt,0) AS total FROM (SELECT district FROM car UNION SELECT district FROM motor) d LEFT JOIN car c USING (district) LEFT JOIN motor mo USING (district)) SELECT * FROM (SELECT district AS x_axis, '汽車' AS y_axis, car_cnt AS data, total, 1 AS so FROM dists UNION ALL SELECT district AS x_axis, '機車' AS y_axis, motor_cnt AS data, total, 2 AS so FROM dists) z ORDER BY total DESC, so;	\N	metrotaipei
-power_usage_ratio	\N	\N	\N	static	\N	\N	\N	台電 d007019	雙北最新年度用電結構（住宅 / 服務業 / 機關 / 工業 / 其他）	台電依縣市發布的年度用電性質比例，可看出城市產業結構。	居民查自己城市用電結構 / 政策評估	{https://data.gov.tw/dataset/38959}	{doit,ntpc}	2026-05-02 06:00:00+00	2026-05-02 06:00:00+00	two_d	WITH latest AS (SELECT usage_type, ratio FROM power_usage_ratio_tpe WHERE year = (SELECT MAX(year) FROM power_usage_ratio_tpe)) SELECT CASE WHEN usage_type LIKE '機關%' THEN '機關' ELSE usage_type END AS x_axis, '台北市' AS y_axis, ROUND(ratio * 100.0 / SUM(ratio) OVER (), 2) AS data FROM latest ORDER BY data DESC;	\N	taipei
-power_usage_ratio	\N	\N	\N	static	\N	\N	\N	台電 d007019	雙北最新年度用電結構（住宅 / 服務業 / 機關 / 工業 / 其他）	台電依縣市發布的年度用電性質比例，可看出城市產業結構。	居民查自己城市用電結構 / 政策評估	{https://data.gov.tw/dataset/38959}	{doit,ntpc}	2026-05-02 06:00:00+00	2026-05-02 06:00:00+00	two_d	WITH latest AS (SELECT usage_type, ratio FROM power_usage_ratio_new_tpe WHERE year = (SELECT MAX(year) FROM power_usage_ratio_new_tpe)) SELECT CASE WHEN usage_type LIKE '機關%' THEN '機關' ELSE usage_type END AS x_axis, '新北市' AS y_axis, ROUND(ratio * 100.0 / SUM(ratio) OVER (), 2) AS data FROM latest ORDER BY data DESC;	\N	metrotaipei
-env_restaurant	\N	{13}	\N	static	\N	\N	\N	data.taipei	臺北市環保餐廳家數（按行政區）	臺北市環保局認證的環保餐廳，落實環境管理、綠色採購、惜食、源頭減量等措施。	電動車充電 30 分鐘旁邊吃個友善餐廳	{https://data.taipei/dataset/detail?id=env_restaurant}	{doit,ntpc}	2026-05-02 06:00:00+00	2026-05-02 06:00:00+00	two_d	SELECT district AS x_axis, '環保餐廳' AS y_axis, COUNT(*)::int AS data FROM env_restaurant_tpe WHERE district IS NOT NULL AND district != '' GROUP BY district ORDER BY 3 DESC;	\N	taipei
-env_restaurant	\N	{13,14}	\N	static	\N	\N	\N	data.ntpc.gov.tw	新北市環保餐廳家數（按行政區）	新北市環保局認證的環保餐廳。	電動車充電 30 分鐘旁邊吃個友善餐廳	{https://data.ntpc.gov.tw/datasets/e90d14f8-5995-4ebb-af19-8f8fd7d396c8}	{doit,ntpc}	2026-05-02 06:00:00+00	2026-05-02 06:00:00+00	two_d	SELECT district AS x_axis, COUNT(*)::int AS data FROM (SELECT district FROM env_restaurant_tpe UNION ALL SELECT district FROM env_restaurant_new_tpe) t WHERE district IS NOT NULL AND district != '' GROUP BY district ORDER BY data DESC;	\N	metrotaipei
-street_tree_dist	\N	\N	\N	static	\N	\N	\N	data.taipei	台北市各區行道樹數量	台北市各行政區行道樹分布。資料來自台北市工務局 TaipeiTree 開放資料聚合。行道樹多代表林蔭密度高、夏季散步較涼爽。	夏天找有遮蔭的散步路線 / 評估各區城市綠化程度	{https://data.taipei/dataset/detail?id=7a49d00c-a5ff-4a6b-be9e-aaa6dc1ff7e8}	{doit}	2026-05-02 06:00:00+00	2026-05-02 06:00:00+00	two_d	SELECT district AS x_axis, '行道樹' AS y_axis, tree_count AS data FROM street_tree_tpe ORDER BY data DESC;	\N	taipei
-street_tree_dist	\N	\N	\N	static	\N	\N	\N	data.taipei	台北市各區行道樹數量	台北市各行政區行道樹分布（新北資料目前未公開於 data.ntpc）	夏天找有遮蔭的散步路線 / 評估各區城市綠化程度	{https://data.taipei/dataset/detail?id=7a49d00c-a5ff-4a6b-be9e-aaa6dc1ff7e8}	{doit}	2026-05-02 06:00:00+00	2026-05-02 06:00:00+00	two_d	SELECT district AS x_axis, '行道樹' AS y_axis, tree_count AS data FROM street_tree_tpe ORDER BY data DESC;	\N	metrotaipei
-green_park_type	\N	\N	\N	static	\N	\N	\N	data.taipei	台北市綠地組成（按類型分）	台北市水綠地圖集統計。公園 1243 公頃 + 河濱 486 + 生態化 174 + 校園 11 = 總計 1914 公頃。	評估城市綠化結構 / 規劃散步去處（河濱適合長走、生態園適合親子）	{https://data.taipei/dataset/detail?id=5b277432-f534-4d09-a24c-d3f6b514e042}	{doit}	2026-05-02 06:00:00+00	2026-05-02 06:00:00+00	two_d	SELECT park_type AS x_axis, '綠地' AS y_axis, area_ha AS data FROM green_park_type_tpe ORDER BY data DESC;	\N	taipei
-green_park_type	\N	\N	\N	static	\N	\N	\N	data.taipei	台北市綠地組成（按類型分）	台北市水綠地圖集統計（新北資料尚未整合）	評估城市綠化結構 / 規劃散步去處	{https://data.taipei/dataset/detail?id=5b277432-f534-4d09-a24c-d3f6b514e042}	{doit}	2026-05-02 06:00:00+00	2026-05-02 06:00:00+00	two_d	SELECT park_type AS x_axis, '綠地' AS y_axis, area_ha AS data FROM green_park_type_tpe ORDER BY data DESC;	\N	metrotaipei
+env_restaurant	\N	{13}	\N	static	\N	\N	\N	data.taipei	臺北市環保餐廳家數（按行政區）	臺北市環保局認證的環保餐廳，落實環境管理、綠色採購、惜食、源頭減量等措施。	電動車充電 30 分鐘旁邊吃個友善餐廳 / 約會選店	{https://data.taipei/dataset/detail?id=...}	{doit,ntpc}	2026-05-02 06:26:11.983366+00	2026-05-02 06:26:11.983366+00	two_d	\nSELECT district AS x_axis, '環保餐廳' AS y_axis, COUNT(*)::int AS data\n  FROM env_restaurant_tpe\n  WHERE district IS NOT NULL AND district != ''\nGROUP BY district\nORDER BY 3 DESC;\n   	\N	taipei
+ev_charging_station	\N	{9,11}	\N	static	\N	\N	\N	data.taipei + data.ntpc	雙北電動車充電樁分布（汽車 + 機車）	整合臺北市與新北市政府開放資料，顯示電動車充電站位置、規格、收費資訊，地址透過 Nominatim 反查座標。	電動車主找充電樁 / 想換電動車的人查家附近資源	{https://data.taipei,https://data.ntpc.gov.tw}	{doit,ntpc}	2026-05-02 05:57:41.311244+00	2026-05-02 05:57:41.311244+00	two_d	\nSELECT district AS x_axis, COUNT(*)::int AS data FROM (\n  SELECT district FROM charging_station_car_tpe\n  UNION ALL\n  SELECT district FROM charging_station_motor_tpe\n) t WHERE district IS NOT NULL AND district != ''\nGROUP BY district ORDER BY data DESC;\n	\N	taipei
+power_usage_ratio	\N	\N	\N	static	\N	\N	\N	台電 d007019	雙北最新年度用電結構（住宅 / 服務業 / 機關 / 工業 / 其他）	台電依縣市發布的年度用電性質比例，可看出城市產業結構：商業大城（服務業高）vs 住商工平衡（住宅+工業偏高）。	居民查自己城市用電結構 / 想搬家比較雙北 / 政策評估	{https://data.gov.tw/dataset/38959}	{doit,ntpc}	2026-05-02 06:08:20.543175+00	2026-05-02 06:08:20.543175+00	two_d	\nWITH latest AS (\n  SELECT usage_type, ratio\n    FROM power_usage_ratio_tpe\n   WHERE year = (SELECT MAX(year) FROM power_usage_ratio_tpe)\n)\nSELECT CASE WHEN usage_type LIKE '機關%' THEN '機關' ELSE usage_type END AS x_axis,\n       '台北市' AS y_axis,\n       ROUND(ratio * 100.0 / SUM(ratio) OVER (), 2) AS data\n  FROM latest\nORDER BY data DESC;\n	\N	taipei
+power_usage_ratio	\N	\N	\N	static	\N	\N	\N	台電 d007019	雙北最新年度用電結構（住宅 / 服務業 / 機關 / 工業 / 其他）	台電依縣市發布的年度用電性質比例，可看出城市產業結構：商業大城（服務業高）vs 住商工平衡（住宅+工業偏高）。	居民查自己城市用電結構 / 想搬家比較雙北 / 政策評估	{https://data.gov.tw/dataset/38959}	{doit,ntpc}	2026-05-02 06:08:20.543175+00	2026-05-02 06:08:20.543175+00	two_d	\nWITH latest AS (\n  SELECT usage_type, ratio\n    FROM power_usage_ratio_new_tpe\n   WHERE year = (SELECT MAX(year) FROM power_usage_ratio_new_tpe)\n)\nSELECT CASE WHEN usage_type LIKE '機關%' THEN '機關' ELSE usage_type END AS x_axis,\n       '新北市' AS y_axis,\n       ROUND(ratio * 100.0 / SUM(ratio) OVER (), 2) AS data\n  FROM latest\nORDER BY data DESC;\n	\N	metrotaipei
+ev_charging_station	\N	{9,10,11,12}	\N	static	\N	\N	\N	data.taipei + data.ntpc	雙北電動車充電樁分布（汽車 + 機車）	整合臺北市與新北市政府開放資料，顯示電動車充電站位置、規格、收費資訊，地址透過 Nominatim 反查座標。	電動車主找充電樁 / 想換電動車的人查家附近資源	{https://data.taipei,https://data.ntpc.gov.tw}	{doit,ntpc}	2026-05-02 05:57:41.311244+00	2026-05-02 05:57:41.311244+00	two_d	\nSELECT district AS x_axis, COUNT(*)::int AS data FROM (\n  SELECT district FROM charging_station_car_tpe\n  UNION ALL SELECT district FROM charging_station_motor_tpe\n  UNION ALL SELECT district FROM charging_station_car_new_tpe\n  UNION ALL SELECT district FROM charging_station_motor_new_tpe\n) t WHERE district IS NOT NULL AND district != ''\nGROUP BY district ORDER BY data DESC;\n	\N	metrotaipei
+env_restaurant	\N	{13,14}	\N	static	\N	\N	\N	data.ntpc.gov.tw	新北市環保餐廳家數（按行政區）	新北市環保局認證的環保餐廳。	電動車充電 30 分鐘旁邊吃個友善餐廳 / 約會選店	{https://data.ntpc.gov.tw/datasets/e90d14f8-5995-4ebb-af19-8f8fd7d396c8}	{doit,ntpc}	2026-05-02 06:26:11.983366+00	2026-05-02 06:26:11.983366+00	two_d	\nSELECT district AS x_axis, COUNT(*)::int AS data FROM (\n  SELECT district FROM env_restaurant_tpe\n  UNION ALL SELECT district FROM env_restaurant_new_tpe\n) t WHERE district IS NOT NULL AND district != ''\nGROUP BY district ORDER BY data DESC;\n	\N	metrotaipei
 \.
 
 
-COPY public.dashboard_groups (dashboard_id, group_id) FROM stdin;
-106	2
-356	2
-355	3
-359	3
-358	3
-601	3
-601	2
-\.
-
 --
--- TOC entry 3377 (class 0 OID 0)
--- Dependencies: 222
--- Name: dashboards_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: component_maps_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.dashboards_id_seq', (SELECT COALESCE(MAX(id), 0) FROM public.dashboards), true);
+SELECT pg_catalog.setval('public.component_maps_id_seq', 14, true);
 
 
 --
--- TOC entry 3378 (class 0 OID 0)
--- Dependencies: 224
--- Name: groups_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: components_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.groups_id_seq', (SELECT COALESCE(MAX(id), 4) FROM public.groups), true);
+SELECT pg_catalog.setval('public.components_id_seq', 1, false);
 
 
--- Completed on 2024-02-16 10:38:44 UTC
+--
+-- Name: dashboards_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.dashboards_id_seq', 360, true);
+
+
+--
+-- Name: component_charts component_charts_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.component_charts
+    ADD CONSTRAINT component_charts_pkey PRIMARY KEY (index);
+
+
+--
+-- Name: component_maps component_maps_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.component_maps
+    ADD CONSTRAINT component_maps_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: components components_index_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.components
+    ADD CONSTRAINT components_index_key UNIQUE (index);
+
+
+--
+-- Name: components components_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.components
+    ADD CONSTRAINT components_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: dashboard_groups dashboard_groups_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.dashboard_groups
+    ADD CONSTRAINT dashboard_groups_pkey PRIMARY KEY (dashboard_id, group_id);
+
+
+--
+-- Name: dashboards dashboards_index_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.dashboards
+    ADD CONSTRAINT dashboards_index_key UNIQUE (index);
+
+
+--
+-- Name: dashboards dashboards_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.dashboards
+    ADD CONSTRAINT dashboards_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: dashboard_groups fk_dashboard_groups_dashboard; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.dashboard_groups
+    ADD CONSTRAINT fk_dashboard_groups_dashboard FOREIGN KEY (dashboard_id) REFERENCES public.dashboards(id);
+
+
+--
+-- Name: dashboard_groups fk_dashboard_groups_group; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.dashboard_groups
+    ADD CONSTRAINT fk_dashboard_groups_group FOREIGN KEY (group_id) REFERENCES public.groups(id);
+
 
 --
 -- PostgreSQL database dump complete
+--
+

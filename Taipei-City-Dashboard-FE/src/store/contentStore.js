@@ -723,14 +723,23 @@ export const useContentStore = defineStore("content", {
 					// No layer data yet, fetch from API
 
 					// Get all map layer data for all active cities
-					const responses = await Promise.all(
+					// 用 allSettled，個別 city 沒有對應的 map-layers dashboard 不會把整批拖死
+					const responses = await Promise.allSettled(
 						this.cityManager.activeCities.map((city) =>
 							http.get(`/dashboard/map-layers-${city}`),
 						),
 					);
+					responses.forEach((r, i) => {
+						if (r.status === "rejected") {
+							console.warn(
+								`map-layers-${this.cityManager.activeCities[i]} unavailable:`,
+								r.reason?.response?.status || r.reason?.message,
+							);
+						}
+					});
 					const uniqueMap = new Map();
-					const mapLayersData = responses.flatMap(
-						(response) => response.data.data || [],
+					const mapLayersData = responses.flatMap((r) =>
+						r.status === "fulfilled" ? r.value.data.data || [] : [],
 					);
 
 					// Filter out duplicate map layers based on id and city

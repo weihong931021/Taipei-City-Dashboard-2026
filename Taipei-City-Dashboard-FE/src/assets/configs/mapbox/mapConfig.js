@@ -162,28 +162,22 @@ export const TaipeiVillage = {
 export const TaipeiBuilding = {
 	id: "taipei_building_3d",
 	source: "taipei_building_3d_source",
-	"source-layer": "tp_building_height84-18p8j0",
+	"source-layer": "tp_building_height-b4airu",
 	type: "fill-extrusion",
-	minzoom: 14,
+	minzoom: 13,
 	paint: {
-		"fill-extrusion-height": [
-			"interpolate",
-			["linear"],
-			["get", "1_top_high"],
-			0,
-			0,
-			1044.14,
-			1044.14,
-		],
-		"fill-extrusion-opacity": 0.8,
+		"fill-extrusion-height": ["coalesce", ["get", "1_top_high"], 15],
+		"fill-extrusion-base": 0,
+		"fill-extrusion-opacity": 0.85,
 		"fill-extrusion-color": [
 			"interpolate",
 			["linear"],
-			["zoom"],
-			14.4,
-			"#121212",
-			14.5,
-			"#272727",
+			["coalesce", ["get", "1_top_high"], 15],
+			0, "#1f1f1f",
+			15, "#2c2c2c",
+			40, "#3a3a3a",
+			80, "#4d4d4d",
+			150, "#666666"
 		],
 	},
 };
@@ -388,6 +382,9 @@ export const maplayerCommonPaint = {
 		"line-dasharray": [2, 4],
 	},
 	symbol: {},
+	"symbol-restaurant": {
+		"icon-opacity": 0.8,
+	},
 };
 
 // Layout Properties
@@ -437,6 +434,48 @@ export const maplayerCommonLayout = {
 	},
 	"symbol-youbike_elec": {
 		"icon-image": "youbike_elec",
+	},
+	"symbol-ev_charging": {
+		"icon-image": "ev_charging",
+		"icon-size": [
+			"interpolate",
+			["linear"],
+			["zoom"],
+			11.99, 0.4,
+			14,    0.6,
+			18,    0.85,
+			22,    1.05,
+		],
+		"icon-allow-overlap": false,
+		"icon-padding": 2,
+	},
+	"symbol-ev_motor": {
+		"icon-image": "ev_motor",
+		"icon-size": [
+			"interpolate",
+			["linear"],
+			["zoom"],
+			11.99, 0.4,
+			14,    0.6,
+			18,    0.85,
+			22,    1.05,
+		],
+		"icon-allow-overlap": false,
+		"icon-padding": 2,
+	},
+	"symbol-restaurant": {
+		"icon-image": "restaurant",
+		"icon-size": [
+			"interpolate",
+			["linear"],
+			["zoom"],
+			11.99, 0.35,
+			14,    0.5,
+			18,    0.75,
+			22,    0.95,
+		],
+		"icon-allow-overlap": false,
+		"icon-padding": 2,
 	},
 	"symbol-youbike": {
 		"icon-image": [
