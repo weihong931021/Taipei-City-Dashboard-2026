@@ -66,7 +66,7 @@
         │ (PostGIS)│    │  documents │  │   API    │  │  (LLM)   │
         │ + redis  │    │ collection │  │          │  │ Llama 70B│
         └──────────┘    └────────────┘  └──────────┘  └──────────┘
-        dashboarddb     向量 768d (e5)   geocoding +   tool calling
+        dashboard DB     向量 768d (e5)   geocoding +   tool calling
         + manager db                      directions
 ```
 
@@ -86,14 +86,14 @@
 
 | DB 名稱 | 用途 | Schema 來源 |
 |---|---|---|
-| `dashboarddb` | 元件 / 圖表 / dashboard 設定 + AI 工具表 (restaurants, ev_stations) | `handoff/sql/01_dashboard.sql` + `handoff/sql/03_ai_tools_schema.sql` |
-| `dashboardmanagerdb` | 帳號 / 權限 | `handoff/sql/02_dashboardmanager.sql` |
+| `dashboard DB` | 元件 / 圖表 / dashboard 設定 + AI 工具表 | dashboard schema/demo: `db-sample-data/dashboard-demo.sql` (init container 自動套);AI 工具表: `handoff/sql/03_ai_tools_schema.sql` (`scripts/01_apply_ai_schema.sh` 套) |
+| `dashboardmanager DB` | 帳號 / 權限 | `db-sample-data/dashboardmanager-demo.sql` (init container 自動套) |
 
 兩個 DB 在 docker-compose 裡跑成兩個獨立 container (`postgres-data` 和 `postgres-manager`)。
 
 ### 3.2 AI 工具用到的資料表
 
-兩張都在 `dashboarddb` 裡,**必須裝 PostGIS**(`CREATE EXTENSION postgis;`)。
+兩張都在 `dashboard DB` 裡,**必須裝 PostGIS**(`CREATE EXTENSION postgis;`)。
 
 #### `restaurants`(環保餐廳)
 | 欄位 | 型別 | 說明 |
@@ -195,7 +195,7 @@
 
 ### 4.3 `docker/csv-ingest/cache/geocode_cache.json`
 
-ETL 過程中 Mapbox 地址 → 座標的快取。**重要**:接手者不要刪掉,跑 `2_load_csv_to_pg.sh` 時會大幅減少 Mapbox API 用量。
+ETL 過程中 Mapbox 地址 → 座標的快取。**重要**:接手者不要刪掉,跑 `02_load_csv_to_pg.sh` 時會大幅減少 Mapbox API 用量。
 
 ---
 
@@ -203,51 +203,86 @@ ETL 過程中 Mapbox 地址 → 座標的快取。**重要**:接手者不要刪�
 
 ### 5.1 先決條件
 
-- Docker Desktop (推薦)
-- Postgres 14+ (with PostGIS) — Docker compose 會處理
-- Python 3.10+ (跑 ETL 腳本要)
-- Node 20+ (跑 FE 要)
-- Go 1.22+ (跑 BE 要)
-- 一個 Mapbox token、一個 TWCC API key
+**唯一硬性要求:Docker Desktop 24+ + Git Bash (Windows) 或一般 bash (Mac/Linux)**
 
-### 5.2 步驟
+- Docker Desktop 24+ (含 Docker Compose v2)
+- Git
+- 一個 [Mapbox token](https://account.mapbox.com/access-tokens/) (免費)
+- 一個 TWCC API key (台灣 AI 雲)
+
+> 不需要本機裝 Python / Node / Go / psql,所有東西都跑在 container 裡。
+
+### 5.2 一次性步驟
 
 ```bash
 # 1. clone
 git clone https://github.com/frank931023/dashboard-26.git
 cd dashboard-26
+git checkout feature/ai-rag-route-panel
 
 # 2. 設 env
 cp handoff/env.example docker/.env
 cp handoff/env.example Taipei-City-Dashboard-FE/.env.development
-# 編輯這兩個 .env,填入 Mapbox token / TWCC key / Postgres 密碼
+#  → 用編輯器打開 docker/.env,填入:
+#       MAPBOX_TOKEN, VITE_MAPBOXTOKEN  (同一個 pk.* token)
+#       TWCC_API_URL, TWCC_API_KEY, TWCC_MODEL
+#       DB_DASHBOARD_PASSWORD, DB_MANAGER_PASSWORD  (任意設)
+#       QDRANT_API_KEY  (任意設,但 docker-compose-db.yaml 跟 BE 兩邊要對得上)
+#       JWT_SECRET, IDNO_SALT (任意 random string)
 
-# 3. 把後端服務拉起來 (Postgres + Qdrant + Redis)
-cd docker
+# 3. 建 docker network (一次性)
 docker network create --driver=bridge --subnet=192.168.128.0/24 \
     --gateway=192.168.128.1 br_dashboard
-docker compose -f docker-compose-db.yaml up -d
-cd ..
 
-# 4. 套用 SQL (建 DB + schema + demo 資料)
-bash handoff/scripts/1_setup_databases.sh
+# 4. 拉 DB 層服務 (postgres-data + postgres-manager + qdrant + redis + pgadmin)
+#    Postgres image 自動建 dashboard DB / dashboardmanager DB 兩個 DB,
+#    並啟用 PostGIS。
+docker compose -f docker/docker-compose-db.yaml up -d
 
-# 5. 把 CSV 灌進 Postgres (restaurants + ev_stations)
-bash handoff/scripts/2_load_csv_to_pg.sh
+# 5. 跑 init container — BE 用 cobra 命令套 schema + demo 資料,FE 跑 npm ci
+#    (這個 compose 一次性執行,跑完 container 會自己 exit)
+docker compose -f docker/docker-compose-init.yaml up
 
-# 6. 把 MD 灌進 Qdrant (RAG knowledge base)
-bash handoff/scripts/3_ingest_md_to_qdrant.sh
+# 6. 套 AI 工具新增的 schema (restaurants + ev_stations)
+bash handoff/scripts/01_apply_ai_schema.sh
 
-# 7. 跑 BE
-cd docker
-docker compose up -d dashboard-be
-# 或本機:cd Taipei-City-Dashboard-BE && go run main.go
+# 7. CSV → Postgres (用 docker run,不需要本機 Python)
+bash handoff/scripts/02_load_csv_to_pg.sh
 
-# 8. 跑 FE
-docker compose up -d dashboard-fe
-# 或本機:cd Taipei-City-Dashboard-FE && npm install && npm run dev
+# 8. MD → Qdrant (RAG 知識庫,首次 build image 要 download e5-base 模型 ~1.1 GB)
+bash handoff/scripts/03_ingest_md_to_qdrant.sh
 
-# 9. 開瀏覽器到 http://localhost:8080 (docker) 或 http://localhost:5173 (本機 vite)
+# 9. 拉應用層 (BE + FE + nginx)
+docker compose -f docker/docker-compose.yaml up -d
+
+# 10. 開瀏覽器
+# FE:    http://localhost:8080
+# BE:    http://localhost:8088   (API)
+# qdrant 控制台:  http://localhost:6333/dashboard
+# pgadmin:        http://localhost:8889
+```
+
+### 5.3 日常開發循環
+
+只要做完一次 5.2,之後每次開機只需要:
+
+```bash
+docker compose -f docker/docker-compose-db.yaml up -d   # DB 層
+docker compose -f docker/docker-compose.yaml up -d      # 應用層
+```
+
+或停止:`docker compose ... down`
+
+### 5.4 驗證資料都進去了
+
+```bash
+# Postgres: restaurants + ev_stations 應該有幾百筆
+docker exec -e PGPASSWORD=$DB_DASHBOARD_PASSWORD postgres-data \
+  psql -U postgres -d $DB_DASHBOARD_DBNAME -c \
+  'SELECT (SELECT count(*) FROM restaurants), (SELECT count(*) FROM ev_stations);'
+
+# Qdrant: documents collection 應該有 50+ points
+curl -H "api-key: $QDRANT_API_KEY" http://localhost:6333/collections/documents
 ```
 
 ---
@@ -336,7 +371,7 @@ AI 用 `resolve_location` 拿你提供的位置座標,再用 PostGIS `ST_DWithin
 
 ### Q3. RAG 查不到東西
 - 確認 Qdrant 的 `documents` collection 真的有資料 (`curl <QDRANT_URL>/collections/documents` 看 points_count)。
-- 沒資料就重跑 `bash handoff/scripts/3_ingest_md_to_qdrant.sh`。
+- 沒資料就重跑 `bash handoff/scripts/03_ingest_md_to_qdrant.sh`。
 
 ### Q4. ETL 跑很久 / Mapbox 用量爆掉
 - 用 repo 內附的 `docker/csv-ingest/cache/geocode_cache.json`,大部分地址都已快取。
@@ -344,7 +379,7 @@ AI 用 `resolve_location` 拿你提供的位置座標,再用 PostGIS `ST_DWithin
 
 ### Q5. Postgres 沒裝 PostGIS
 - 用 `postgis/postgis:15-3.3` Docker image,自動帶。
-- 否則裝完要 `CREATE EXTENSION postgis;` 在 dashboarddb 裡跑一次。
+- 否則裝完要 `CREATE EXTENSION postgis;` 在 dashboard DB 裡跑一次。
 
 ### Q6. 帳號登入 (auth) 問題
 - 開發階段 BE 路由的 `IsLoggedIn()` middleware 已**暫時註解掉**(`router.go`),讓 chatbot 不用登入也能玩。**正式上線前要解除註解!**

@@ -9,7 +9,7 @@
 -- use ST_DWithin / ST_Distance for radius searches in metres.
 --
 -- Apply with:
---   psql -h <host> -U <user> -d dashboarddb -f 03_ai_tools_schema.sql
+--   psql -h <host> -U <user> -d $DB_DASHBOARD_DBNAME -f 03_ai_tools_schema.sql
 
 CREATE EXTENSION IF NOT EXISTS postgis;
 
