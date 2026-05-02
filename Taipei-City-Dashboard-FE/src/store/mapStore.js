@@ -187,6 +187,7 @@ export const useMapStore = defineStore("map", {
 			fetch(`/mapData/metrotaipei_town.geojson`)
 				.then((response) => response.json())
 				.then((data) => {
+					if (!this.map) return; // map 可能在 fetch 期間被銷毀
 					this.map
 						.addSource("metrotaipei_town_label", {
 							type: "geojson",
@@ -198,6 +199,7 @@ export const useMapStore = defineStore("map", {
 			fetch(`/mapData/metrotaipei_village.geojson`)
 				.then((response) => response.json())
 				.then((data) => {
+					if (!this.map) return;
 					this.map
 						.addSource("metrotaipei_village_label", {
 							type: "geojson",
@@ -315,11 +317,19 @@ export const useMapStore = defineStore("map", {
 				"restaurant",
 			];
 			images.forEach((element) => {
+				if (!this.map) return;
 				this.map.loadImage(
 					`/images/map/${element}.png`,
 					(error, image) => {
-						if (error) throw error;
-						this.map.addImage(element, image);
+						// map 可能在 image 載入期間被銷毀，或圖檔本身就失敗
+						if (!this.map) return;
+						if (error) {
+							console.warn(`Failed to load icon "${element}":`, error.message);
+							return;
+						}
+						if (!this.map.hasImage(element)) {
+							this.map.addImage(element, image);
+						}
 					},
 				);
 			});

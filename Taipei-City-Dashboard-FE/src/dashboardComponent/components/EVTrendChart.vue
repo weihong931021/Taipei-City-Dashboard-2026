@@ -12,9 +12,9 @@ const selectedCity = ref("雙北");
 const selectedType = ref("汽車");
 
 const FUEL_META = {
-	"汽油":     { label: "汽油",     color: "#F5AD4A" },
-	"汽油/電能": { label: "油電混合", color: "#9DC56E" },
-	"電能":     { label: "電能",     color: "#4CB495" },
+	"汽油":     { label: "汽油",     color: "#F5AD4A", dash: 0 },
+	"汽油/電能": { label: "油電混合", color: "#9DC56E", dash: 5 },
+	"電能":     { label: "電能",     color: "#4CB495", dash: 0 },
 };
 
 const localSeries = ref([]);
@@ -107,6 +107,7 @@ function rebuildSeries(series) {
 	const fuelOrder = ["汽油", "汽油/電能", "電能"];
 	const rebuilt = [];
 	const colors = [];
+	const dashes = [];
 
 	for (const fuel of fuelOrder) {
 		const meta = FUEL_META[fuel];
@@ -136,6 +137,7 @@ function rebuildSeries(series) {
 		if (!merged) continue;
 		rebuilt.push({ ...merged, name: meta.label });
 		colors.push(meta.color);
+		dashes.push(meta.dash);
 	}
 
 	// Compute KPIs before normalization (raw values still in d.y)
@@ -156,6 +158,7 @@ function rebuildSeries(series) {
 		normalized.push(s);
 	}
 	const finalColors = normalized.map((s) => colors[rebuilt.indexOf(s)]);
+	const finalDashes = normalized.map((s) => dashes[rebuilt.indexOf(s)]);
 
 	const allY = normalized.flatMap((s) =>
 		s.data.map((d) => (d && typeof d === "object" ? d.y : 0))
@@ -168,6 +171,7 @@ function rebuildSeries(series) {
 	chartOptions.value = {
 		...chartOptions.value,
 		colors: finalColors,
+		stroke: { ...chartOptions.value.stroke, dashArray: finalDashes },
 		yaxis: { ...chartOptions.value.yaxis, min: minY, max: maxY },
 	};
 }

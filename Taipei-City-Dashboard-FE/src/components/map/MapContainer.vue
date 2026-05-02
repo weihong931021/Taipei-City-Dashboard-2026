@@ -162,16 +162,14 @@ onMounted(() => {
       >
         返回預設
       </button>
-      <template v-if="!authStore.user?.user_id">
-        <div
-          v-for="(item, index) in savedLocations"
-          :key="`${item[4]}-${index}`"
-        >
-          <button @click="mapStore.easeToLocation(item)">
-            {{ item[4] }}
-          </button>
-        </div>
-      </template>
+      <div
+        v-for="(item, index) in savedLocations"
+        :key="`${item[4]}-${index}`"
+      >
+        <button @click="mapStore.easeToLocation(item)">
+          {{ item[4] }}
+        </button>
+      </div>
       <div
         v-for="(item, index) in mapStore.viewPoints"
         :key="index"

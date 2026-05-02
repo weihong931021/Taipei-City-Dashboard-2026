@@ -13,7 +13,7 @@ INSERT INTO components (id, index, name) VALUES
 INSERT INTO component_charts (index, color, types, unit) VALUES
   ('env_restaurant',
    '{#F39C12}',
-   '{BarChart,MapLegend}',
+   '{DistrictChart,BarChart,MapLegend}',
    '家');
 
 -- 地圖層 (symbol + restaurant icon)

@@ -20,8 +20,8 @@ INSERT INTO components (id, index, name) VALUES
 -- 2. 視覺化設定
 INSERT INTO component_charts (index, color, types, unit) VALUES
   ('ev_charging_station',
-   '{#7B1FA2,#0ABAB5}',          -- 汽車紫 / 機車 Tiffany 綠
-   '{BarChart,MapLegend}',       -- 長條圖 + 地圖圖例
+   '{#C866F2,#0ABAB5}',          -- 汽車亮紫 / 機車 Tiffany 綠
+   '{DistrictChart,BarChart,MapLegend}', -- 行政區圖 + 長條圖 + 地圖圖例
    '個');
 
 -- 3. 地圖層設定（symbol type + 自定義 icon）
