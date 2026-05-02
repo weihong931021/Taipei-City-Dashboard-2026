@@ -1,0 +1,45 @@
+{
+	"dag_infos": {
+		"dag_id": "power_by_district",
+		"start_date": "2026-05-01",
+		"schedule_interval": "0 4 5 * *",
+		"catchup": false,
+		"tags": [
+			"power_by_district",
+			"經濟部能源局",
+			"台電",
+			"用電量",
+			"雙北"
+		],
+		"description": "台灣電力公司鄉鎮市(郵遞區)別用電統計資料 — 雙北各行政區月度用電量 (民國 114 / 2025).",
+		"default_args": {
+			"owner": "airflow",
+			"email": [
+				"DEFAULT_EMAIL_LIST"
+			],
+			"email_on_retry": false,
+			"email_on_failure": true,
+			"retries": 1,
+			"retry_delay": 60
+		},
+		"ready_data_db": "postgres_default",
+		"ready_data_default_table": "power_by_district",
+		"ready_data_history_table": "",
+		"raw_data_db": "postgres_default",
+		"raw_data_table": "",
+		"load_behavior": "replace"
+	},
+	"data_infos": {
+		"name_cn": "雙北各行政區用電統計",
+		"airflow_update_freq": "04:00+8 5th every month",
+		"source": "台灣電力公司鄉鎮市(郵遞區)別用電統計資料",
+		"source_type": "csv",
+		"source_dept": "台灣電力公司",
+		"gis_format": null,
+		"output_coordinate": "",
+		"is_geometry": 0,
+		"dataset_description": "民國 114 年度雙北每月各行政區、各用電項目之用戶數、契約容量、用電度數（資料來源：台電鄉鎮市(郵遞區)別用電統計資料）",
+		"etl_description": "讀取 CSV → 清遮罩值(*,**)為 NULL → 民國年轉西元年 → 排除小計/合計/總計列 → 限定雙北郵遞區號 → 補新北行政區「區」字 → 寫入 PostgreSQL",
+		"sensitivity": "public"
+	}
+}
