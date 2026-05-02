@@ -51,5 +51,5 @@ services:
 
 networks:
   default:
-    name: br_dashboard
+    name: br_dashboard_2026
     external: true

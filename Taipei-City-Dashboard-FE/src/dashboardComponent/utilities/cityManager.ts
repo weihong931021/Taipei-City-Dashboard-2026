@@ -16,7 +16,6 @@ export class CityManager {
         { name: "臺北市", value: "taipei" },
         { name: "新北市", value: "newtaipei" },
         { name: "雙北", value: "metrotaipei" },
-        { name: "桃園", value: "taoyuan" },
     ];
 
     private configs: Map<string, CityConfig> = new Map([
@@ -24,40 +23,30 @@ export class CityManager {
             "taipei",
             {
                 expandedName: "臺北儀表板",
-				collapsedName: "臺北",
+                collapsedName: "臺北",
                 enabled: true,
                 selectList: ["taipei"],
                 tagList: ["taipei"],
             },
         ],
         [
-            "metrotaipei",
-            {
-                expandedName: "雙北儀表板",
-				collapsedName: "雙北",
-                enabled: true,
-                selectList: ["metrotaipei", "taipei"],
-                tagList: ["metrotaipei", "taipei"],
-            },
-        ],
-        [
             "newtaipei",
             {
-                expandedName: "新北",
-				collapsedName: "新北",
-                enabled: false,
+                expandedName: "新北儀表板",
+                collapsedName: "新北",
+                enabled: true,
                 selectList: ["newtaipei"],
                 tagList: ["newtaipei"],
             },
         ],
         [
-            "taoyuan",
+            "metrotaipei",
             {
-                expandedName: "桃園",
-				collapsedName: "新北",
-                enabled: false,
-                selectList: ["taoyuan"],
-                tagList: ["taoyuan"],
+                expandedName: "雙北儀表板",
+                collapsedName: "雙北",
+                enabled: true,
+                selectList: ["metrotaipei", "taipei", "newtaipei"],
+                tagList: ["metrotaipei", "taipei", "newtaipei"],
             },
         ],
     ]);
