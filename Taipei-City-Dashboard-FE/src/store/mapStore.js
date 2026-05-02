@@ -214,6 +214,7 @@ export const useMapStore = defineStore("map", {
 				.then((response) => response.json())
 				.then((data) => {
 					if (!this.map) return; // map 可能在 fetch 期間被銷毀
+					if (this.map.getSource("metrotaipei_town_label")) return;
 					this.map
 						.addSource("metrotaipei_town_label", {
 							type: "geojson",
@@ -226,6 +227,7 @@ export const useMapStore = defineStore("map", {
 				.then((response) => response.json())
 				.then((data) => {
 					if (!this.map) return;
+					if (this.map.getSource("metrotaipei_village_label")) return;
 					this.map
 						.addSource("metrotaipei_village_label", {
 							type: "geojson",
@@ -234,7 +236,11 @@ export const useMapStore = defineStore("map", {
 						.addLayer(metroTaipeiVillage);
 				});
 			// Taipei 3D Buildings — 需要 VITE_MAPBOXTILE 私有 tileset 才能用
-			if (!authStore.isMobileDevice && import.meta.env.VITE_MAPBOXTILE) {
+			if (
+				!authStore.isMobileDevice &&
+				import.meta.env.VITE_MAPBOXTILE &&
+				!this.map.getSource("taipei_building_3d_source")
+			) {
 				this.map
 					.addSource("taipei_building_3d_source", {
 						type: "vector",
