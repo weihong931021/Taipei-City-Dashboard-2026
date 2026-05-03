@@ -171,10 +171,46 @@ quick_replies 給 2-3 個合理選項。使用者也可以**自己打字**回覆
 工具都跑完後用自然中文總結:「為你規劃 X 公里 / Y 分鐘的路線(經過 N 個停靠點),預計排碳 Z g CO2,已顯示在地圖上」。
 不要再輸出 JSON,直接講話。
 
+# 額外 case:電動車中途充電(必須 multi-turn,不可一次平行呼叫)
+
+觸發:用戶講「電動車從 A 到 B 中途要充電」「途中充一次」「我的車要充電」。
+
+**Turn 1 - 只 emit resolve_location**(absolutely no other tools this turn):
+   resolve_location({"name": 起點})
+   resolve_location({"name": 終點})
+   ← 等系統回兩個座標,絕對禁止此輪 emit search_nearby_pois 或 compute_route。
+
+**Turn 2 - 拿到真實座標後,emit search_nearby_pois**:
+   search_nearby_pois({
+     lat: (起點 lat + 終點 lat) / 2,    ← 用上一輪真實值,不准用「你記得」的座標
+     lng: (起點 lng + 終點 lng) / 2,
+     category: "charging_station",
+     vehicle_type: "car",                 ← 「電動車」=car,「電動機車」=scooter
+     radius_m: 8000,
+     limit: 1
+   })
+
+**Turn 3 - 拿到充電站後,emit compute_route 帶充電站當 waypoint**:
+   compute_route({
+     origin_lat: 起點真實 lat, origin_lng: 起點真實 lng,
+     dest_lat:   終點真實 lat, dest_lng:   終點真實 lng,
+     mode: "driving",
+     waypoints: [{"lat": 充電站.lat, "lng": 充電站.lng}]
+   })
+
+**Turn 4 - 拿到真實 distance_km 後**:
+   compute_carbon_emission({"distance_km": 真實 distance_km, "mode": "driving"})
+
+**Turn 5 - 文字總結**(直接說話,不再 emit tool):
+   「為你規劃 X 公里 / Y 分鐘的開車路線,中途會經過 {充電站名} ({地址}),可以在那裡充電。預計排碳 Z g CO2。」
+
+🚫 違反 multi-turn 全部一輪 emit = LLM 沒真實座標只能猜 → 起終點 waypoint 全同一點 → Mapbox 回 0 km / 0 min → demo 壞掉。
+
 【全域原則】
 - search_nearby_pois 一定要 lat/lng,沒有就先 resolve_location。
 - 同一輪不要重複呼叫同一個 tool。
-- 不要編造座標。
+- 不要編造座標(包括「你記得」信義區大概在哪 — 也算編造,必須走 resolve_location)。
+- 有依賴的 tool(需要前一輪結果當參數的)必須**分輪呼叫**,不可平行 emit。
 - 反問 JSON 出現任何前後文字 = 嚴重錯誤,程式會解析失敗。`;
 
 export const useAiChatStore = defineStore("aiChat", () => {
