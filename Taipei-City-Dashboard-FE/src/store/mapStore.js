@@ -37,7 +37,7 @@ import MapPopup from "../components/map/MapPopup.vue";
 import {
 	MapObjectConfig,
 	CityMapView,
-	TaipeiBuilding,
+	MapboxBuilding,
 	metroTaipeiTown,
 	metroTaipeiVillage,
 	metroTpDistrict,
@@ -235,18 +235,17 @@ export const useMapStore = defineStore("map", {
 						})
 						.addLayer(metroTaipeiVillage);
 				});
-			// Taipei 3D Buildings — 需要 VITE_MAPBOXTILE 私有 tileset 才能用
-			if (
-				!authStore.isMobileDevice &&
-				import.meta.env.VITE_MAPBOXTILE &&
-				!this.map.getSource("taipei_building_3d_source")
-			) {
-				this.map
-					.addSource("taipei_building_3d_source", {
-						type: "vector",
-						url: import.meta.env.VITE_MAPBOXTILE,
-					})
-					.addLayer(TaipeiBuilding);
+			// Taipei 3D Buildings — Mapbox Streets v8 內建 building 圖層（pk.* 即可，全域覆蓋）
+			if (!authStore.isMobileDevice) {
+				const firstLabelLayer = this.map
+					.getStyle()
+					.layers.find(
+						(l) =>
+							l.type === "symbol" &&
+							l.layout &&
+							l.layout["text-field"],
+					);
+				this.map.addLayer(MapboxBuilding, firstLabelLayer?.id);
 			}
 			// Taipei Village Boundaries
 			if (hasSourceLayer) {

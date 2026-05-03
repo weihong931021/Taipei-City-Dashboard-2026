@@ -14,6 +14,7 @@ export const MapObjectConfig = {
 	zoom: 9,
 	minZoom: 9,
 	maxZoom: 22,
+	pitch: 45,
 	projection: "globe", // display the map as a 3D globe
 };
 
@@ -173,6 +174,39 @@ export const TaipeiBuilding = {
 			"interpolate",
 			["linear"],
 			["coalesce", ["get", "1_top_high"], 15],
+			0, "#1f1f1f",
+			15, "#2c2c2c",
+			40, "#3a3a3a",
+			80, "#4d4d4d",
+			150, "#666666"
+		],
+	},
+};
+
+// 使用 Mapbox Streets v8 內建 building 圖層的 3D 建築（任何 pk.* token 皆可運作）
+export const MapboxBuilding = {
+	id: "mapbox_building_3d",
+	source: "composite",
+	"source-layer": "building",
+	filter: ["==", "extrude", "true"],
+	type: "fill-extrusion",
+	minzoom: 15,
+	paint: {
+		"fill-extrusion-height": [
+			"interpolate", ["linear"], ["zoom"],
+			15, 0,
+			15.05, ["get", "height"],
+		],
+		"fill-extrusion-base": [
+			"interpolate", ["linear"], ["zoom"],
+			15, 0,
+			15.05, ["get", "min_height"],
+		],
+		"fill-extrusion-opacity": 0.85,
+		"fill-extrusion-color": [
+			"interpolate",
+			["linear"],
+			["coalesce", ["get", "height"], 15],
 			0, "#1f1f1f",
 			15, "#2c2c2c",
 			40, "#3a3a3a",
