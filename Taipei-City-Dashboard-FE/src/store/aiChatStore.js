@@ -127,6 +127,34 @@ const TOOL_DEFS = [
 			},
 		},
 	},
+	{
+		type: "function",
+		function: {
+			name: "analyze_route_greenness",
+			description:
+				"分析一條已算好的路線(來自 compute_route 的 legs[].coordinates)沿路有多少行道樹、什麼樹種、經過幾個公園/綠地。" +
+				"在用戶問「環保行程」「綠化路線」「沿路樹多」「哪條路樹多/公園多」時,**compute_route 跑完後**緊接著呼叫此 tool。" +
+				"回傳樹數、Top 5 樹種、公園清單、0-10 綠化評分,LLM 用來補在路線總結之後。",
+			parameters: {
+				type: "object",
+				properties: {
+					coordinates: {
+						type: "array",
+						description: "路線座標 [[lng,lat], ...] - 直接把 compute_route 回傳的所有 legs[].coordinates 串起來丟進來。",
+						items: {
+							type: "array",
+							items: { type: "number" },
+							minItems: 2,
+							maxItems: 2,
+						},
+					},
+					tree_buffer_m: { type: "integer", description: "樹的緩衝半徑 (m),預設 100", default: 100 },
+					park_buffer_m: { type: "integer", description: "公園的緩衝半徑 (m),預設 200", default: 200 },
+				},
+				required: ["coordinates"],
+			},
+		},
+	},
 ];
 
 const SYSTEM_PROMPT = `你是台北/新北的城市生活助手,只做兩件事:
@@ -205,6 +233,78 @@ quick_replies 給 2-3 個合理選項。使用者也可以**自己打字**回覆
    「為你規劃 X 公里 / Y 分鐘的開車路線,中途會經過 {充電站名} ({地址}),可以在那裡充電。預計排碳 Z g CO2。」
 
 🚫 違反 multi-turn 全部一輪 emit = LLM 沒真實座標只能猜 → 起終點 waypoint 全同一點 → Mapbox 回 0 km / 0 min → demo 壞掉。
+
+# 額外 case:環保行程 / 沿路綠化分析
+
+觸發:用戶講「環保行程」「綠化路線」「沿路樹多」「哪條路樹多」「想走樹多公園多的路」「sustainable trip」。
+
+流程:**先正常算路線**(resolve → compute_route),拿到 distance_km 之後,**追加呼叫** analyze_route_greenness:
+
+  analyze_route_greenness({
+    "coordinates": <把 compute_route 回傳的所有 legs[*].coordinates 串起來成單一 array>
+  })
+
+回傳含:沿路樹數、Top 5 樹種、公園清單、綠化評分。
+總結時加一句:「這條路沿途有 N 棵行道樹(主要 樹種A / 樹種B)、經過 M 個公園(公園名),綠化評分 X / 10。」
+
+注意:analyze_route_greenness 必須**等 compute_route 結果回來再呼叫**(取 coordinates),不可平行 emit。
+
+# ★★★ 終極組合 case:電動機車 + 中途充電/換電 + 綠化路線 (multi-turn 6 步)
+
+觸發:用戶同時提到「騎車 / 機車 / 電動機車」+「充電 / 換電」+(可選)「綠化 / 樹多 / 環保路線」。
+
+關鍵字對應:
+  - 「騎車」「騎機車」「騎電動車」「electric scooter」 → mode="cycling" (Mapbox 路徑) + carbon mode="scooter"
+  - 「充電」「充一次」 → category="charging_station"
+  - 「換電」「換電池」「Gogoro」 → category="swap_station"
+  - vehicle_type 一律 "scooter" (機車)
+
+完整流程(每輪只 emit 該輪能 emit 的,絕不平行 emit 有依賴的):
+
+【Turn 1】 用戶:「我電動機車從台北車站騎到台北101,中途要找一個換電站,順便要綠化高的路線」
+你 emit:
+   resolve_location({"name":"台北車站"})
+   resolve_location({"name":"台北101"})
+   ← 等系統回兩個座標,**這輪不准 emit 其他 tool**
+
+【Turn 2】 拿到真實 origin/dest 座標,emit search_nearby_pois 找換電站:
+   search_nearby_pois({
+     lat: (origin lat + dest lat) / 2,
+     lng: (origin lng + dest lng) / 2,
+     category: "swap_station",        ← 「換電」用 swap_station;「充電」用 charging_station
+     vehicle_type: "scooter",
+     radius_m: 6000,
+     limit: 1
+   })
+   ← 等系統回換電站
+
+【Turn 3】 拿到換電站 (results[0].lat / lng),emit compute_route:
+   compute_route({
+     origin_lat: <真實>, origin_lng: <真實>,
+     dest_lat: <真實>, dest_lng: <真實>,
+     mode: "cycling",                 ← 騎車一律 cycling
+     waypoints: [{"lat": 換電站.lat, "lng": 換電站.lng}]
+   })
+   ← 等 distance_km 跟 legs 回來
+
+【Turn 4】 拿到 compute_route 結果,emit analyze_route_greenness:
+   analyze_route_greenness({
+     "coordinates": <把 legs[0].coordinates + legs[1].coordinates 全串起來>
+   })
+   ← 等樹數 + 公園 + 綠化評分回來
+
+【Turn 5】 emit compute_carbon_emission:
+   compute_carbon_emission({
+     "distance_km": <真實 distance_km>,
+     "mode": "scooter"
+   })
+
+【Turn 6】 文字總結 (不再 emit tool):
+   「為你規劃 X 公里 / Y 分鐘的騎車路線,中途會經過 {換電站名} ({地址}) 可以換電池,
+    沿途有 N 棵行道樹(主要 {樹種A、樹種B、樹種C}),經過 M 個公園({公園名}),
+    綠化評分 {X.X}/10,預計排碳 {Z} g CO2。」
+
+🚫 6 輪不可壓成 1 輪平行 emit,LLM 沒真實值會把所有座標都填同一個點 → demo 全壞。
 
 【全域原則】
 - search_nearby_pois 一定要 lat/lng,沒有就先 resolve_location。

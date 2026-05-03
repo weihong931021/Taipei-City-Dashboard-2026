@@ -10,5 +10,6 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY etl.py .
+COPY load_geojson.py .
 
 CMD ["python", "etl.py"]

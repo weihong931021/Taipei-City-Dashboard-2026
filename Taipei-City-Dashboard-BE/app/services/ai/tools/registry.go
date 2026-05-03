@@ -24,6 +24,7 @@ func init() {
 	Register("search_nearby_pois", SearchNearbyPOIs)
 	Register("compute_route", ComputeRoute)
 	Register("compute_carbon_emission", ComputeCarbonEmission)
+	Register("analyze_route_greenness", AnalyzeRouteGreenness)
 }
 
 // Register adds a tool to the registry
