@@ -69,6 +69,16 @@ var knownLandmarks = map[string]LocPoint{
 
 var mapboxToken = os.Getenv("MAPBOX_TOKEN")
 
+// mapboxReferer makes server-side calls satisfy `pk.*` tokens that have URL allowlist.
+// Defaults to the FE dev origin so the Referer matches what the browser would send.
+// Override with MAPBOX_REFERER if your token allows a different origin (or unset for no header).
+var mapboxReferer = func() string {
+	if v, ok := os.LookupEnv("MAPBOX_REFERER"); ok {
+		return v
+	}
+	return "http://localhost:8080/"
+}()
+
 // httpClient is shared across location tools.
 var httpClient = &http.Client{Timeout: 10 * time.Second}
 
@@ -166,6 +176,9 @@ func geocodeMapbox(ctx context.Context, query string) (*LocPoint, error) {
 		url.PathEscape(query), mapboxToken,
 	)
 	req, _ := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
+	if mapboxReferer != "" {
+		req.Header.Set("Referer", mapboxReferer)
+	}
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -373,6 +386,9 @@ func ComputeRoute(ctx context.Context, args string) (string, error) {
 		mode, sb.String(), mapboxToken,
 	)
 	req, _ := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
+	if mapboxReferer != "" {
+		req.Header.Set("Referer", mapboxReferer)
+	}
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		return "", err
